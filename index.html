@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Genograma</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Genograma (Prototipo v4)</h1>
+
+    <div class="formulario">
+        <h3>Agregar persona</h3>
+        <label>Nombre: <input type="text" id="nombre"></label>
+        <label>Apellido: <input type="text" id="apellido"></label>
+        <label>Sexo:
+            <select id="sexo">
+                <option value="M">Masculino</option>
+                <option value="F">Femenino</option>
+            </select>
+        </label>
+        <label>Rol:
+            <select id="rol">
+                <option value="padre">Padre</option>
+                <option value="madre">Madre</option>
+                <option value="hijo">Hijo/a</option>
+            </select>
+        </label>
+        <button id="agregar">Agregar</button>
+    </div>
+
+    <!-- Contenedor del genograma -->
+    <div class="genograma-container">
+        <svg id="conexiones"></svg>
+        <div class="genograma">
+            <div class="fila" id="padres"></div>
+            <div class="fila" id="hijos"></div>
+        </div>
+    </div>
+
+    <script>
+        const personas = { padre: null, madre: null, hijos: [] };
+
+        const padresContainer = document.getElementById("padres");
+        const hijosContainer = document.getElementById("hijos");
+        const conexiones = document.getElementById("conexiones");
+
+        function crearNodo(p, rol) {
+            const div = document.createElement("div");
+            div.classList.add("persona", p.sexo === "M" ? "hombre" : "mujer");
+
+            const nombre = document.createElement("div");
+            nombre.className = "nombre";
+            nombre.textContent = `${p.nombre} ${p.apellido}`;
+
+            const quitar = document.createElement("button");
+            quitar.textContent = "X";
+            quitar.className = "quitar";
+            quitar.onclick = () => {
+                if (rol === "padre") personas.padre = null;
+                else if (rol === "madre") personas.madre = null;
+                else personas.hijos = personas.hijos.filter(h => h !== p);
+                renderPersona();
+            };
+
+            div.appendChild(nombre);
+            div.appendChild(quitar);
+            return div;
+        }
+
+        function renderPersona() {
+            padresContainer.innerHTML = "";
+            hijosContainer.innerHTML = "";
+            conexiones.innerHTML = "";
+
+            if (personas.padre) padresContainer.appendChild(crearNodo(personas.padre, "padre"));
+            if (personas.madre) padresContainer.appendChild(crearNodo(personas.madre, "madre"));
+            personas.hijos.forEach(h => hijosContainer.appendChild(crearNodo(h, "hijo")));
+
+            dibujarConexiones();
+        }
+
+        function dibujarConexiones() {
+    const containerRect = document.querySelector(".genograma-container").getBoundingClientRect();
+
+    const padreNode = personas.padre ? padresContainer.querySelector(".hombre") : null;
+    const madreNode = personas.madre ? padresContainer.querySelector(".mujer") : null;
+
+    let x1, x2, y, xm;
+
+    // Caso: padre y madre existen → dibujar línea horizontal
+    if (padreNode && madreNode) {
+        const rect1 = padreNode.getBoundingClientRect();
+        const rect2 = madreNode.getBoundingClientRect();
+
+        x1 = rect1.left + rect1.width / 2 - containerRect.left;
+        x2 = rect2.left + rect2.width / 2 - containerRect.left;
+        y = rect1.bottom - containerRect.top;
+
+        // Línea horizontal entre los dos
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", x1);
+        line.setAttribute("y1", y);
+        line.setAttribute("x2", x2);
+        line.setAttribute("y2", y);
+        line.setAttribute("stroke", "black");
+        line.setAttribute("stroke-width", "2");
+        conexiones.appendChild(line);
+
+        xm = (x1 + x2) / 2;
+    } else {
+        // Caso: solo uno de los padres
+        const singleParentNode = padreNode || madreNode;
+        if (!singleParentNode) return; // ningún padre → nada que conectar
+        const rect = singleParentNode.getBoundingClientRect();
+        xm = rect.left + rect.width / 2 - containerRect.left;
+        y = rect.bottom - containerRect.top;
+    }
+
+    // Caso: hay hijos → conectar desde xm hacia abajo
+    if (personas.hijos.length > 0) {
+        const hijosRect = hijosContainer.getBoundingClientRect();
+        const yHijos = hijosRect.top - containerRect.top;
+
+        // línea vertical hacia hijos
+        const lineDown = document.createElementNS("http://www.w3.org/2000/svg","line");
+        lineDown.setAttribute("x1", xm);
+        lineDown.setAttribute("y1", y);
+        lineDown.setAttribute("x2", xm);
+        lineDown.setAttribute("y2", yHijos);
+        lineDown.setAttribute("stroke", "black");
+        lineDown.setAttribute("stroke-width", "2");
+        conexiones.appendChild(lineDown);
+
+        // conectar a cada hijo
+        Array.from(hijosContainer.children).forEach(hijo => {
+            const rect = hijo.getBoundingClientRect();
+            const xh = rect.left + rect.width / 2 - containerRect.left;
+            const yh = rect.top - containerRect.top;
+
+            const lineHijo = document.createElementNS("http://www.w3.org/2000/svg","line");
+            lineHijo.setAttribute("x1", xm);
+            lineHijo.setAttribute("y1", yHijos);
+            lineHijo.setAttribute("x2", xh);
+            lineHijo.setAttribute("y2", yh);
+            lineHijo.setAttribute("stroke", "black");
+            lineHijo.setAttribute("stroke-width", "2");
+            conexiones.appendChild(lineHijo);
+        });
+    }
+}
+
+
+        document.getElementById("agregar").onclick = () => {
+            const nombre = document.getElementById("nombre").value.trim();
+            const apellido = document.getElementById("apellido").value.trim();
+            const sexo = document.getElementById("sexo").value;
+            const rol = document.getElementById("rol").value;
+
+            if(!nombre) return alert("Ingresa un nombre");
+
+            const nuevaPersona = {nombre, apellido, sexo};
+
+            if (rol === "padre") personas.padre = nuevaPersona;
+            else if (rol === "madre") personas.madre = nuevaPersona;
+            else personas.hijos.push(nuevaPersona);
+
+            renderPersona();
+
+            document.getElementById("nombre").value = "";
+            document.getElementById("apellido").value = "";
+        };
+    </script>
+</body>
+</html>
