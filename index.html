@@ -2,46 +2,49 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>GenoName</title>
+  <title>GenoTree</title>
   <link rel="stylesheet" href="/style/style_index.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css"
     integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
     crossorigin="anonymous">
 </head>
 <body>
-  <div class="container container-login">
-    <div class="row align-items-center">
+ <div class="container container-login">
+    <div class="row w-100 align-items-center">
       
-      <!-- Sección Logo -->
-      <div class="col-md-5 logo-section">
-        <img src="/img/Genogramas-removebg-preview.png" alt="Logo Genogramac class="img-fluid">
+      <!-- Logo Sintergia (izquierda, fuera del recuadro) -->
+      <div class="logo-section">
+        <img src="/img/sintergia.png" alt="Logo Sintergia" class="img-fluid logo-sintergia">
       </div>
 
-      <!-- Sección Login -->
-      <div class="col-md-5 d-flex justify-content-center">
-        <div class="login-card w-100" style="max-width: 500px;">
-          <h3 class="text-center mb-4">Iniciar Sesión</h3>
-          <form>
-            <div class="mb-3">
-              <input type="text" id="identificador" placeholder="Usuario" required>
-            </div>
-            <div class="mb-3 d-flex flex-row">
-              <input type="password" id="password" placeholder="Contraseña" required>
-              <div class="form-check mt-2 pr-4 pt-1">
-                <input type="checkbox" class="form-check-input" id="verClave"
-                  onclick="password.type = this.checked ? 'text' : 'password'">
+      <!-- Login con Logo GenoTree dentro -->
+      <div class="col-md-7 d-flex justify-content-center">
+        <div class="login-card w-100">
+          <section id="login" class="w-100">
+            <h3 class="text-center mb-4">Iniciar Sesión</h3>
+            <form>
+              <div class="mb-3">
+                <input type="text" id="identificador" class="form-control ingreso" placeholder="Usuario" required>
               </div>
-            </div>
-            <div class="d-grid">
-              <button type="submit" class="btn btn-primary btn-block">Ingresar</button>
-            </div>
-          </form>
+              
+                <input type="password" id="password" class="form-control ingreso" placeholder="Contraseña" required>
+                <div class="form-check my-2 gap-0">
+                  <label for="verClave" class="form-check-label">Mostrar contraseña</label><input type="checkbox" class="form-check-input" id="verClave"
+                    onclick="password.type = this.checked ? 'text' : 'password'">
+                </div>
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-block">Ingresar</button>
+              </div>
+            </form>
+          </section>
+
+          <!-- Logo GenoTree dentro de la tarjeta -->
+          <img src="/img/GenoTREEw.png" alt="Logo GenoTree" class="img-fluid logo-genotree">
         </div>
       </div>
 
     </div>
   </div>
-
   <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
     integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
     crossorigin="anonymous"></script>
