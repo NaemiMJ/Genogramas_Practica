@@ -1,38 +1,198 @@
+/* --- VARIABLES DE COLOR --- */
+:root {
+  --sidebar-bg: #6f97c4;
+  --content-bg: #f4f7fa;
+  --header-bg: #80b19a;
+  --card-border: #d4e0ec;
+  --text-light: #ffffff;
+  --text-dark: #333;
+  --active-link-bg: #53708d;
+  --sidebar-width: 260px;
+}
+
+/* --- ESTILOS GENERALES --- */
 body {
   font-family: "Segoe UI", Arial, sans-serif;
   margin: 0;
+  background-color: var(--content-bg);
+  color: var(--text-dark);
+  overflow-x: hidden;
+}
+
+.page-wrapper {
   display: flex;
-}
-
-aside {
-  background-color: #6f97c4;
-  width: 220px;
   min-height: 100vh;
-  color: white;
+  align-items: flex-start;
 }
 
-aside.a {
-    max-width: 20px;
+/* --- BARRA LATERAL (SIDEBAR) --- */
+.sidebar {
+  width: var(--sidebar-width);
+  background-color: var(--sidebar-bg);
+  color: var(--text-light);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1rem;
+  flex-shrink: 0;
+  transition: transform 0.3s ease-in-out;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  z-index: 1030; /* Debe estar por encima del overlay */
 }
 
-.img_logo { 
-    padding: 1rem;
-    border-radius: 100%;
+.sidebar-header .user-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background-color: var(--text-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: var(--sidebar-bg);
 }
 
-main {
+.sidebar-header .user-name {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.sidebar .nav-link {
+  color: var(--text-light);
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-weight: 500;
+}
+
+.sidebar .nav-link:hover {
+  background-color: var(--active-link-bg);
+}
+
+.btn-logout {
+  background-color: transparent;
+  border: 1px solid var(--text-light);
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.btn-logout:hover {
+  background-color: var(--text-light);
+  color: var(--sidebar-bg);
+}
+
+/* --- FONDO OVERLAY --- */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1029; /* Justo debajo del sidebar */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+
+/* --- CONTENIDO PRINCIPAL --- */
+.main-content {
+  flex-grow: 1;
+  padding: 2rem;
+  margin-left: var(--sidebar-width);
+  transition: margin-left 0.3s ease-in-out;
+}
+
+.content-header {
+  background-color: var(--header-bg);
+  color: var(--text-light);
+  padding: 0.8rem 1.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.search-bar .form-control {
+  min-width: 150px;
   flex: 1;
-  background: #f8f9fa;
 }
 
-h2 {
-    color: #f8f9fa;
-    background-color: #80b19a;
-    padding: 0.4rem;
-    border-radius: 10px;
+/* --- TARJETAS DE PACIENTE --- */
+.patient-card {
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  width: 100%;
+  aspect-ratio: 1 / 1; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.patient-card .card-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
 }
 
-.links {
-    width: 10rem;
-    gap: 1rem;
+.patient-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+.patient-card .patient-icon {
+  font-size: 2.5rem;
+  color: var(--sidebar-bg);
+}
+.add-patient-card {
+  border-style: dashed;
+  border-width: 2px;
+  background-color: #f8f9fa;
+}
+.add-patient-card .patient-icon {
+  color: #6c757d;
+}
+
+/* --- TABLA DE AUDITORÍA --- */
+.audit-header {
+  background-color: #6c757d;
+}
+.table {
+  border-color: var(--card-border);
+}
+.table thead {
+  background-color: #e9ecef;
+}
+
+/* --- DISEÑO RESPONSIVO --- */
+@media (max-width: 991.98px) {
+  /* Por defecto, en pantallas pequeñas, la barra se esconde */
+  .sidebar {
+    transform: translateX(-100%);
+  }
+  
+  /* El contenido principal ocupa todo el ancho */
+  .main-content {
+    margin-left: 0;
+  }
+  
+  /* Cuando el wrapper tiene la clase 'sidebar-visible', la barra aparece */
+  .page-wrapper.sidebar-visible .sidebar {
+    transform: translateX(0);
+  }
+
+  /* También se muestra el overlay */
+  .page-wrapper.sidebar-visible .sidebar-overlay {
+    opacity: 1;
+    visibility: visible;
+  }
 }

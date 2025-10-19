@@ -1,70 +1,96 @@
+/* Definición de variables globales */
+:root {
+  --primary-color: #80b19a;
+  --primary-color-hover: #6da68c;
+  --background-gradient-start: #f4f7fa;
+  --background-gradient-end: #e0ecf5;
+  --card-background: #ffffff;
+  --text-color: #333;
+  --border-color: #ddd;
+  --border-radius: 12px;
+  --focus-shadow-color: rgba(128, 177, 154, 0.5);
+}
+
+/* Estilos base del cuerpo */
 body {
   font-family: "Segoe UI", Arial, sans-serif;
-  background: linear-gradient(135deg, #f4f7fa, #e0ecf5);
-  color: #333;
+  background: linear-gradient(135deg, var(--background-gradient-start), var(--background-gradient-end));
+  color: var(--text-color);
   margin: 0;
-  height: 100vh;
-  display: flex;
-  align-items: center;
 }
 
-/* Contenedor principal */
-.container-login {
-  max-width: 2000px;
+/* --- LOGOS --- */
+.logo-sintergia {
+  max-width: 350px;
 }
 
-/* Logo Sintergia (fuera del recuadro blanco, alineado a la izquierda) */
-.logo-section {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.logo-section img {
-  max-width: 400px;
-  margin-top: 20px;
+.logo-genotree {
+  max-width: 200px;
 }
 
-/* Tarjeta de login */
+/* --- TARJETA DE LOGIN --- */
 .login-card {
-  border-radius: 20px;
-  padding: 2rem;
-  background: #fff;
-  box-shadow: 0px 6px 16px rgba(0, 0, 0, 0.15);
-  display: flex;
-  gap: 20px;
-  flex-direction: row;
-  align-items: center;
-  max-width: 1000px;
-  margin: auto;
+  width: 100%;
+  border-radius: var(--border-radius);
+  background: var(--card-background);
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
 }
 
-/* Logo GenoTree dentro del recuadro */
-.login-card .logo-genotree {
-  max-width: 250px;
-  margin-top: 1rem;
+
+
+/* --- ELEMENTOS DEL FORMULARIO --- */
+.form-control {
+  border-radius: var(--border-radius);
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Inputs */
-input {
-  width: 70%;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-  transition: border 0.3s ease-in-out;
-}
-input.ingreso:focus {
-  box-shadow: 0 0 0 0.2rem rgba(128, 177, 154, 0.5);
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.25rem var(--focus-shadow-color);
 }
 
+.form-check-input:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+/* --- BOTÓN PRINCIPAL --- */
 .btn-primary {
-  background-color: #80b19a !important; /* Verde suave */
-  border: none !important;
-  border-radius: 10px;
-  font-weight: 600;
-  color: white !important;
-  transition: background 0.3s ease-in-out;
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  border-radius: var(--border-radius);
+  padding: 12px;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-.btn-primary:hover {
-  background-color: #6da68c !important; 
+.btn-primary:hover, .btn-primary:focus {
+  background-color: var(--primary-color-hover);
+  border-color: var(--primary-color-hover);
+}
+
+footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    color: #a4a8aa;
+}
+
+/* --- AJUSTES RESPONSIVOS --- */
+@media (max-width: 767.98px) {
+  /* En móviles, el logo de GenoTree se mueve a la parte superior */
+  .login-card .card-body .row {
+    flex-direction: column-reverse;
+  }
+  
+  .logo-genotree {
+    max-width: 150px;
+    margin-bottom: 2rem;
+  }
+  
+  /* Reducimos el padding en pantallas pequeñas */
+  .login-card .card-body {
+    padding: 2rem !important;
+  }
 }

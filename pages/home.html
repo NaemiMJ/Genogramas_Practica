@@ -2,49 +2,161 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Home</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenoTree - Home</title>
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  
   <link rel="stylesheet" href="/style/style_home.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css"
-    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
-    crossorigin="anonymous">
 </head>
 <body>
-  <aside class="d-flex flex-column align-items-center p-3">
-      <div class="img_logo mb-3 bg-light">
-          <img src="/img/logo_sintergia.png" alt="Logo Sintergia" width="120">
+  <div class="page-wrapper">
+    
+    <div class="sidebar-overlay"></div>
+
+    <aside class="sidebar">
+      <div class="sidebar-header text-center">
+        <div class="user-avatar mx-auto mb-2">
+          <img src="../img/logo_sintergia.png" width="80px"> 
+        </div>
+        <h5 class="user-name">Nombre de Usuario</h5>
+        <p class="user-role text-white-50">Administrador</p>
       </div>
-        <p class="text-white text-center">-<br>-</p>
-
-        <div class="links d-flex">
-            <img src="/img/psicologia.png" alt="P" width="" height="35">
-            <a href="pacientes.html" class="btn btn-light my-2 w-100">Pacientes</a>
-        </div>
-        <div class="links d-flex">
-            <img src="/img/usuario.png" alt="P" height="30">
-            <a href="pacientes.html" class="btn btn-light my-2 w-100">Usuarios</a>
-        </div>
-        <div class="links d-flex"">
-            <img src="" alt="P">
-            <a href="pacientes.html" class="btn btn-light my-2 w-100">Auditoría</a>
-        </div>
-        
       
-      <button class="btn btn-danger mt-auto w-100">Cerrar sesión</button>
-  </aside>
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a class="nav-link active" href="./pacientes.html">
+            <i class="bi bi-heart-fill"></i> Pacientes
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="./usuarios.html">
+            <i class="bi bi-people-fill"></i> Usuarios
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="./auditoria.html">
+            <i class="bi bi-bar-chart-fill"></i> Auditoría
+          </a>
+        </li>
+      </ul>
 
-  <main class="p-4 justify-content-start">
-      <h2>Home - Página Principal</h2>
-      <!-- Aquí iría la búsqueda de pacientes y los registros -->
-  </main>
+      <a href="../index.html" class="btn btn-logout mt-auto">
+        <i class="bi bi-box-arrow-left"></i> Cerrar sesión
+      </a>
+    </aside>
 
-  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
-    integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
-    crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js"
-    integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
-    crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js"
-    integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
-    crossorigin="anonymous"></script>
+    <main class="main-content">
+      <button class="btn d-lg-none mb-3" id="sidebar-toggle">
+        <i class="bi bi-list"></i>
+      </button>
+
+      <header class="content-header">
+        Home - Página Principal
+      </header>
+
+      <section class="patients-section">
+        <div class="search-bar card mb-4">
+          <div class="card-body d-flex flex-wrap align-items-center gap-3">
+            <strong class="me-2">PACIENTES</strong>
+            <input type="text" class="form-control" placeholder="Nombre: ingrese">
+            <input type="text" class="form-control" placeholder="Apellido: ingrese">
+            <button class="btn btn-success">Buscar</button>
+            <button class="btn btn-primary ms-md-auto">Ver más</button>
+          </div>
+        </div>
+
+        <div class="row g-4" id="patient-grid">
+          <div class="col-6 col-md-3 col-lg-2 col-xl-2">
+            <div class="patient-card card text-center">
+              <div class="card-body"><div class="patient-icon mb-2"><i class="bi bi-person-fill"></i></div><h6 class="card-title">Nombre Paciente 1</h6></div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3 col-lg-2 col-xl-2" id="add-patient-card-container">
+            <div class="patient-card card text-center add-patient-card">
+              <div class="card-body"><div class="patient-icon mb-2"><i class="bi bi-plus-lg"></i></div><h6 class="card-title">Agregar Paciente</h6></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="audit-section mt-5">
+        <header class="content-header audit-header">
+          ÚLTIMO REGISTRO DE AUDITORÍA
+        </header>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Usuario</th>
+                <th>Paciente Modificado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>dd/mm/aaaa</td>
+                <td>pepito</td>
+                <td>modificar genograma de "paciente"</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // --- LÓGICA PARA MOSTRAR/OCULTAR EL SIDEBAR ---
+      const sidebarToggle = document.getElementById('sidebar-toggle');
+      const pageWrapper = document.querySelector('.page-wrapper');
+      const sidebarOverlay = document.querySelector('.sidebar-overlay');
+      
+      if (sidebarToggle && pageWrapper && sidebarOverlay) {
+        // El botón de menú abre/cierra el sidebar
+        sidebarToggle.addEventListener('click', () => {
+          pageWrapper.classList.toggle('sidebar-visible');
+        });
+
+        // El overlay siempre cierra el sidebar
+        sidebarOverlay.addEventListener('click', () => {
+          pageWrapper.classList.remove('sidebar-visible');
+        });
+      }
+
+      // --- LÓGICA PARA AGREGAR NUEVOS PACIENTES ---
+      const patientGrid = document.getElementById('patient-grid');
+      const addPatientContainer = document.getElementById('add-patient-card-container');
+
+      const agregarNuevoPaciente = () => {
+        const nombrePaciente = prompt("Ingrese el nombre del nuevo paciente:");
+        if (nombrePaciente && nombrePaciente.trim() !== '') {
+          const nuevaTarjetaHTML = `
+            <div class="patient-card card text-center">
+              <div class="card-body">
+                <div class="patient-icon mb-2"><i class="bi bi-person-fill"></i></div>
+                <h6 class="card-title">${nombrePaciente}</h6>
+              </div>
+            </div>`;
+          
+          const nuevaColumna = document.createElement('div');
+          nuevaColumna.className = 'col-6 col-md-3 col-lg-2 col-xl-2';
+          nuevaColumna.innerHTML = nuevaTarjetaHTML;
+
+          patientGrid.insertBefore(nuevaColumna, addPatientContainer);
+        }
+      };
+
+      if (addPatientContainer) {
+        addPatientContainer.addEventListener('click', agregarNuevoPaciente);
+      }
+    });
+  </script>
 </body>
 </html>
