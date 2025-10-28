@@ -17,12 +17,17 @@ const usuarioSchema = new mongoose.Schema({
   rol: {
     type: String,
     required: true,
-    enum: ['Administrador', 'Usuario', 'Auditor'] // Roles permitidos
+    enum: ['Administrador', 'Usuario'] // Roles permitidos
   },
   password: {
     type: String,
     required: true
-    // En una aplicación real, la contraseña debería estar encriptada (hashed)
+  },
+  correo: {
+    type: String,
+    required: true,
+    unique: true,
+    match: [/^\S+@\S+\.\S+$/, 'Formato de correo no válido']
   },
   estado: {
     type: String,

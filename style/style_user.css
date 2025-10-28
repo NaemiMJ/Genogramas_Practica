@@ -1,0 +1,233 @@
+/* --- VARIABLES DE COLOR --- */
+:root {
+  --sidebar-bg: #6f97c4;
+  --content-bg: #f4f7fa;
+  --header-bg: #80b19a; /* Color verde del header */
+  --card-border: #d4e0ec;
+  --text-light: #ffffff;
+  --text-dark: #333;
+  --active-link-bg: #53708d;
+  --button-create-bg: #4a90e2; /* Azul para el botón "Crear Usuario" */
+  --search-box-bg: #eaf2fa; /* Azul claro para el cuadro de búsqueda */
+  --sidebar-width: 260px;
+}
+
+/* --- ESTILOS GENERALES --- */
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  margin: 0;
+  background-color: var(--content-bg);
+  color: var(--text-dark);
+  overflow-x: hidden;
+}
+
+.page-wrapper {
+  display: flex;
+  min-height: 100vh;
+  align-items: flex-start;
+}
+
+.main-content {
+  flex-grow: 1;
+  padding: 1.5rem;
+  margin-left: var(--sidebar-width);
+  transition: margin-left 0.3s ease-in-out;
+}
+
+
+/* --- Contenido Principal --- */
+.content-header {
+  background-color: var(--header-bg);
+  color: var(--text-light);
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+/* --- LISTA DE USUARIOS --- */
+.user-list-container {
+    background-color: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.user-list-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr; /* Columnas para Usuario, Rol, Estado y Acciones */
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid var(--card-border);
+  color: #555;
+}
+
+.user-list-item {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  padding: 1rem;
+  border-bottom: 1px solid var(--card-border);
+  align-items: center;
+}
+
+.user-list-item:last-child {
+  border-bottom: none;
+}
+
+.status-badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.status-active {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-inactive {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* --- ESTILOS PARA LA NUEVA SECCIÓN DE BÚSQUEDA --- */
+
+/* Contenedor principal para alinear la búsqueda y el botón "Crear" */
+.top-controls-wrapper {
+  display: flex;
+  flex-direction: column; /* <-- CAMBIO: Apila los elementos verticalmente */
+  align-items: center;   /* <-- CAMBIO: Centra los elementos horizontalmente */
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* El formulario de búsqueda ahora es flexible para ocupar el espacio disponible */
+.search-form {
+  width: 100%; /* <-- CAMBIO: Asegura que el formulario ocupe todo el ancho */
+  background-color: var(--search-box-bg);
+  border-radius: 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Encabezado azul oscuro "Buscar por:" */
+.search-form-header {
+  background-color: var(--sidebar-bg);
+  color: var(--text-light);
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+/* Cuerpo del formulario con los campos de texto */
+.search-form-body {
+  padding: 1.5rem;
+}
+
+/* Pie del formulario para el botón "Buscar" */
+.search-form-footer {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+  text-align: right;
+}
+
+/* Estilo para el botón de búsqueda verde */
+.btn-search {
+  background-color: var(--header-bg);
+  color: var(--text-light);
+  font-weight: 500;
+}
+.btn-search:hover {
+  background-color: #6a9a83;
+  color: var(--text-light);
+}
+
+
+/* Botón "Crear Usuario" */
+.btn-create-user {
+    background-color: #5d8abd;
+    color: var(--text-light);
+    font-weight: 500;
+    border: none;
+    padding: 0.75rem 1rem;
+}
+.btn-create-user:hover {
+    background-color: #4a7bad;
+    color: var(--text-light);
+}
+
+/* --- ESTILOS PARA BOTONES DE RADIO PERSONALIZADOS --- */
+.form-check-input[type="radio"] {
+  display: none;
+}
+.form-check-input[type="radio"] + .form-check-label {
+  position: relative;
+  padding-left: 30px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+}
+.form-check-input[type="radio"] + .form-check-label::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--sidebar-bg);
+  border-radius: 50%;
+  background-color: #fff;
+}
+.form-check-input[type="radio"] + .form-check-label::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%) scale(0);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--sidebar-bg);
+  transition: transform 0.15s ease-in-out;
+}
+.form-check-input[type="radio"]:checked + .form-check-label::after {
+  transform: translateY(-50%) scale(1);
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 992px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+  .page-wrapper.sidebar-visible .sidebar {
+    transform: translateX(0);
+  }
+  .page-wrapper.sidebar-visible .sidebar-overlay {
+    opacity: 1;
+    visibility: visible;
+  }
+  .main-content {
+    margin-left: 0;
+  }
+  /* Ya no es necesario cambiar la dirección del flex-container aquí, porque es el comportamiento por defecto */
+}
+
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1029;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}

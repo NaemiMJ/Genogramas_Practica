@@ -49,7 +49,6 @@ function decrypt(text) {
     }
 }
 
-
 // --- Conexión a MongoDB Atlas ---
 const connectDB = async () => {
   try {
@@ -81,7 +80,7 @@ app.get('/api/usuarios', async (req, res) => {
 
 // [POST] Crear un nuevo usuario
 app.post('/api/usuarios', async (req, res) => {
-  const { rut, nombre, apellido, rol, password } = req.body;
+  const { rut, nombre, apellido, rol, password, correo } = req.body;
 
   try {
     // 1. Hashear la contraseña
@@ -96,6 +95,7 @@ app.post('/api/usuarios', async (req, res) => {
       apellido,
       rol,
       password: passwordHash, // Guardamos la contraseña hasheada
+      correo,
       estado: 'Activo'
     });
 
@@ -104,9 +104,9 @@ app.post('/api/usuarios', async (req, res) => {
   } catch (err) {
     // Manejo de error para RUT duplicado
     if (err.code === 11000) {
-        return res.status(409).json({ message: 'Error: El RUT ya está registrado.', error: err.message });
+        return res.status(409).json({ message: 'Error: El RUT o Correo ya están registrados.', error: err.message });
     }
-    res.status(400).json({ message: 'Error al crear el usuario', error: err.message });
+    res.status(400).json({ message: 'Error del servidor', error: err.message });
   }
 });
 
@@ -122,6 +122,61 @@ app.delete('/api/usuarios/:id', async (req, res) => {
     res.status(500).json({ message: 'Error al eliminar el usuario', error: err.message });
   }
 });
+
+// [GET]  Usado para encontrar un usuario y devolverlo, para su modificación.
+app.get('/api/usuarios/:id', async (req, res) => {
+  try {
+    const usuarioCifrado = await Usuario.findById(req.params.id);
+    if (!usuarioCifrado) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    // Desciframos el RUT antes de enviarlo
+    const usuarioDescifrado = usuarioCifrado.toObject();
+    usuarioDescifrado.rut = decrypt(usuarioCifrado.rut);
+    
+    res.json(usuarioDescifrado);
+  } catch (err) {
+    res.status(500).json({ message: 'Error al obtener el usuario', error: err.message });
+  }
+});
+
+//[PUT]  Modificar usuario
+app.put('/api/usuarios/:id', async (req, res) => {
+  const { nombre, apellido, rol, estado } = req.body;
+
+  // Validaciones básicas (puedes agregar más)
+  if (!nombre || !apellido || !rol || !estado) {
+    return res.status(400).json({ message: 'Faltan campos obligatorios' });
+  }
+
+  try {
+    const datosActualizados = {
+      nombre,
+      apellido,
+      rol,
+      estado
+      // No actualizamos el RUT, correo ni contraseña aquí
+    };
+
+    const usuarioActualizado = await Usuario.findByIdAndUpdate(
+      req.params.id, 
+      datosActualizados, 
+      { new: true, runValidators: true } // {new: true} devuelve el documento actualizado
+    );
+
+    if (!usuarioActualizado) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    res.json(usuarioActualizado);
+  } catch (err) {
+    res.status(500).json({ message: 'Error al actualizar el usuario', error: err.message });
+  }
+});
+
+
+
 
 // --- Iniciar servidor ---
 const startServer = async () => {
