@@ -62,10 +62,27 @@ const connectDB = async () => {
 
 // --- RUTAS DE LA API (ACTUALIZADAS) ---
 
-// [GET] Obtener todos los usuarios
-app.get('/api/usuarios', async (req, res) => {
+// [GET] Obtener todos los usuarios con soporte de busqueda 
+app.get('/api/usuarios', async (req, res) => { 
   try {
-    const usuariosCifrados = await Usuario.find();
+    const { termino } = req.query; 
+    let query = {};
+
+    if (termino) {
+      // Creamos una expresión regular para búsqueda case-insensitive
+      const regex = { $regex: termino, $options: 'i' }; 
+      
+      query = {
+        $or: [
+          { nombre: regex },
+          { apellido: regex }
+        ]
+      };
+    }
+
+    // Usamos el objeto 'query' para filtrar. Si 'termino' no existe, 'query' será {} y traerá todo.
+    const usuariosCifrados = await Usuario.find(query);
+    
     // Desciframos el RUT de cada usuario antes de enviarlo al frontend
     const usuariosDescifrados = usuariosCifrados.map(user => {
         const userObject = user.toObject(); // Convertimos el documento de Mongoose a un objeto plano
@@ -77,6 +94,9 @@ app.get('/api/usuarios', async (req, res) => {
     res.status(500).json({ message: 'Error al obtener los usuarios', error: err.message });
   }
 });
+
+// [POST] Crear un nuevo usuario
+// ... (el resto de tus rutas PUT, POST, DELETE, GET por ID siguen igual) ...
 
 // [POST] Crear un nuevo usuario
 app.post('/api/usuarios', async (req, res) => {

@@ -64,42 +64,7 @@ body {
   flex: 1;
 }
 
-/* --- TARJETAS DE PACIENTE --- */
-.patient-card {
-  border: 1px solid var(--card-border);
-  border-radius: 12px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  cursor: pointer;
-  width: 100%;
-  aspect-ratio: 1 / 1; 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.patient-card .card-body {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem;
-}
 
-.patient-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-}
-.patient-card .patient-icon {
-  font-size: 2.5rem;
-  color: var(--sidebar-bg);
-}
-.add-patient-card {
-  border-style: dashed;
-  border-width: 2px;
-  background-color: #f8f9fa;
-}
-.add-patient-card .patient-icon {
-  color: #6c757d;
-}
 
 /* --- TABLA DE AUDITORÍA --- */
 .audit-header {
@@ -112,26 +77,3 @@ body {
   background-color: #e9ecef;
 }
 
-/* --- DISEÑO RESPONSIVO --- */
-@media (max-width: 991.98px) {
-  /* Por defecto, en pantallas pequeñas, la barra se esconde */
-  .sidebar {
-    transform: translateX(-100%);
-  }
-  
-  /* El contenido principal ocupa todo el ancho */
-  .main-content {
-    margin-left: 0;
-  }
-  
-  /* Cuando el wrapper tiene la clase 'sidebar-visible', la barra aparece */
-  .page-wrapper.sidebar-visible .sidebar {
-    transform: translateX(0);
-  }
-
-  /* También se muestra el overlay */
-  .page-wrapper.sidebar-visible .sidebar-overlay {
-    opacity: 1;
-    visibility: visible;
-  }
-}

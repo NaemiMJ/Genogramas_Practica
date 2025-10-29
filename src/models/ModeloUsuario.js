@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-const usuarioSchema = new mongoose.Schema({
+const usuarioSchema = new Schema({
   rut: {
     type: String,
     required: true,
