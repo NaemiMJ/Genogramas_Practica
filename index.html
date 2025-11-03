@@ -31,8 +31,8 @@
                   <h3 class="text-center mb-4 fw-bold">Iniciar Sesión</h3>
                   <form id="loginForm">
                     <div class="mb-3">
-                      <label for="identificador" class="form-label">Usuario</label>
-                      <input type="text" id="identificador" class="form-control" placeholder="Ingrese rut" required>
+                      <label for="correo" class="form-label">Correo Electrónico</label>
+                      <input type="email" id="correo" class="form-control" placeholder="Ingrese su correo" required>
                     </div>
                     <div class="mb-3">
                       <label for="password" class="form-label">Contraseña</label>
@@ -46,6 +46,9 @@
                       <button type="submit" class="btn btn-primary btn-block fw-bold">Ingresar</button>
                     </div>
                   </form>
+                  <div id="login-error" class="alert alert-danger mt-3 d-none" role="alert">
+                    Credenciales incorrectas. Por favor, intente de nuevo.
+                  </div>
                 </section>
               </div>
 
@@ -77,8 +80,42 @@
           passwordInput.type = showPasswordCheckbox.checked ? 'text' : 'password';
         });
       }
-    });
-  </script>
+    const loginForm = document.getElementById('loginForm');
+      const errorDiv = document.getElementById('login-error'); 
 
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errorDiv.classList.add('d-none'); 
+
+        const correo = document.getElementById('correo').value;
+        const password = document.getElementById('password').value;
+
+        try {
+          // 👇 AQUÍ ESTÁ EL CAMBIO: Añade la dirección de tu servidor
+          const response = await fetch('http://localhost:3001/api/auth/login', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ correo, password }) 
+          });
+        if (response.ok) {
+          const usuario = await response.json();
+          localStorage.setItem('usuario', JSON.stringify(usuario));
+
+          if (usuario.rol === 'Administrador') {
+            window.location.href = './pages/home.html';
+          } else {
+            window.location.href = './pages/pacientes.html';
+          }
+        } else {
+          errorDiv.classList.remove('d-none');
+        }
+      } catch (error) {
+        console.error('Error de red:', error);
+        errorDiv.innerText = 'Error de conexión con el servidor.';
+        errorDiv.classList.remove('d-none');
+      }
+    });
+  });
+</script>
 </body>
 </html>

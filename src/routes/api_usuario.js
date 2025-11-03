@@ -6,8 +6,8 @@ const { encrypt, decrypt } = require('../utils/crypto'); // <-- Importa crypto
 const saltRounds = 10;
 
 // [GET] Obtener todos los usuarios
-// Ruta final: GET /api/usuarios
-router.get('/', async (req, res) => { // <-- Usa router.get
+// ... (tu código GET, déjalo como está) ...
+router.get('/', async (req, res) => { 
   try {
     const { termino } = req.query; 
     let query = {};
@@ -27,25 +27,40 @@ router.get('/', async (req, res) => { // <-- Usa router.get
   }
 });
 
+
 // [POST] Crear un nuevo usuario
 // Ruta final: POST /api/usuarios
 router.post('/', async (req, res) => { // <-- Usa router.post
   const { rut, nombre, apellido, rol, password, correo } = req.body;
+  
+  // --- 👇 AÑADIDO PARA DEPURAR ---
+  console.log(`[USUARIO] Creando usuario para: ${correo}`);
+  console.log(`[USUARIO] Contraseña recibida para hashear: |${password}|`);
+  // --- -------------------------- ---
+
   try {
     const passwordHash = await bcrypt.hash(password, saltRounds);
+    
+    // --- 👇 AÑADIDO PARA DEPURAR ---
+    console.log(`[USUARIO] Hash generado: |${passwordHash}|`);
+    // --- -------------------------- ---
+
     const rutCifrado = encrypt(rut);
     const nuevoUsuario = new Usuario({
       rut: rutCifrado,
       nombre,
       apellido,
       rol,
-      password: passwordHash,
+      password: passwordHash, // Guardamos la contraseña hasheada
       correo,
       estado: 'Activo'
     });
     const usuarioGuardado = await nuevoUsuario.save();
     res.status(201).json(usuarioGuardado);
   } catch (err) {
+    // --- 👇 AÑADIDO PARA DEPURAR ---
+    console.log(`[USUARIO] Error al crear: ${err.message}`);
+    // --- -------------------------- ---
     if (err.code === 11000) {
         return res.status(409).json({ message: 'Error: El RUT o Correo ya están registrados.', error: err.message });
     }
@@ -53,9 +68,8 @@ router.post('/', async (req, res) => { // <-- Usa router.post
   }
 });
 
-// [DELETE] Eliminar un usuario
-// Ruta final: DELETE /api/usuarios/:id
-router.delete('/:id', async (req, res) => { // <-- Usa router.delete
+// ... (El resto de tus rutas DELETE, GET por ID, y PUT déjalas como están) ...
+router.delete('/:id', async (req, res) => { 
   try {
     const usuarioEliminado = await Usuario.findByIdAndDelete(req.params.id);
     if (!usuarioEliminado) {
@@ -67,9 +81,7 @@ router.delete('/:id', async (req, res) => { // <-- Usa router.delete
   }
 });
 
-// [GET] Obtener un usuario por ID
-// Ruta final: GET /api/usuarios/:id
-router.get('/:id', async (req, res) => { // <-- Usa router.get
+router.get('/:id', async (req, res) => { 
   try {
     const usuarioCifrado = await Usuario.findById(req.params.id);
     if (!usuarioCifrado) {
@@ -83,9 +95,7 @@ router.get('/:id', async (req, res) => { // <-- Usa router.get
   }
 });
 
-// [PUT] Modificar usuario
-// Ruta final: PUT /api/usuarios/:id
-router.put('/:id', async (req, res) => { // <-- Usa router.put
+router.put('/:id', async (req, res) => { 
   const { nombre, apellido, rol, estado } = req.body;
   if (!nombre || !apellido || !rol || !estado) {
     return res.status(400).json({ message: 'Faltan campos obligatorios' });
@@ -106,4 +116,5 @@ router.put('/:id', async (req, res) => { // <-- Usa router.put
   }
 });
 
-module.exports = router; // <-- ¡MUY IMPORTANTE!
+
+module.exports = router;
