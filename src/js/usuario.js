@@ -55,19 +55,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const estadoClass = user.estado === 'Activo' ? 'status-active' : 'status-inactive';
 
 
- userItem.innerHTML = `
- <span>${user.nombre} ${user.apellido}</span>
- <span>${user.correo}</span>
- <span>${user.rol}</span>
- <span><span class="status-badge ${estadoClass}">${user.estado}</span></span>
- <div>
-                    <button class="btn btn-sm btn-outline-primary btn-edit" data-id="${user._id}" title="Editar"><i class="bi bi-pencil-fill"></i></button>
- <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${user._id}" title="Eliminar"><i class="bi bi-trash-fill"></i></button>
- </div>
- `;
- userList.appendChild(userItem);
- });
- };
+       userItem.innerHTML = `
+       <span>${user.nombre} ${user.apellido}</span>
+       <span>${user.correo}</span>
+       <span>${user.rol}</span>
+       <span><span class="status-badge ${estadoClass}">${user.estado}</span></span>
+       <div class="d-flex flex-row gap-2">
+                     <button class="btn btn-sm btn-outline-primary btn-edit" data-id="${user._id}" title="Editar"><i class="bi bi-pencil-fill"></i></button>
+       <button class="btn btn-sm btn-outline-danger btn-delete" data-id="${user._id}" title="Eliminar"><i class="bi bi-trash-fill"></i></button>
+       </div>
+       `;
+       userList.appendChild(userItem);
+       });
+       };
 
  //Funcion pra cargar los usuaros, y con busqueda si es necesarios 
  const cargarUsuarios = async () => {

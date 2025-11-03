@@ -2,33 +2,37 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const personaSchema = new Schema({
-  nombres: {
-    type: String,
-    required: true // <-- Requerido
+  nombres: { 
+    type: String, 
+    required: true 
   },
-  apellido_pa: {
-    type: String,
-    required: true // <-- Requerido
+  apellido_pa: { 
+    type: String, 
+    required: true 
   },
-  apellido_mat: String, // Este sigue siendo opcional
-  sexo: {
-    type: String,
-    required: true // <-- Requerido
+  apellido_mat: String,
+  sexo: { 
+    type: String, 
+    required: true, 
+    enum: ['Masc', 'Fem'] 
   },
-  fecha_nacim: {
-    type: Date,
-    required: true // <-- Requerido
+  fecha_nacim: { 
+    type: Date, 
+    required: true 
   },
-  relaciones: [
-    {
-      tipo_relacion: String,
-      persona_relacionada: {
-        type: Schema.Types.ObjectId,
-        ref: 'Persona'
-      }
-    }
-  ]
+  
+  // --- Relaciones Verticales (Genealogía) ---
+  padre: {
+    type: Schema.Types.ObjectId,
+    ref: 'Persona',
+    default: null
+  },
+  madre: {
+    type: Schema.Types.ObjectId,
+    ref: 'Persona',
+    default: null
+  }
 });
-const Persona = mongoose.model('Persona', personaSchema);
 
+const Persona = mongoose.model('Persona', personaSchema);
 module.exports = Persona;

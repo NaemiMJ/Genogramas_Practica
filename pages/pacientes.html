@@ -52,8 +52,42 @@
             </button> 
           </div>
         </form>
-
       </div> 
+
+       <div class="modal fade" id="createPacienteModal" tabindex="-1" aria-labelledby="createPacienteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="createPacienteModalLabel">Crear Nuevo Paciente</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="create-paciente-form">
+            <div class="mb-3">
+                <label for="new-name" class="form-label">Nombre</label>
+                <input type="text" class="form-control" id="new-name" required>
+            </div>
+            <div class="mb-3">
+                <label for="new-lastname1" class="form-label">Apellido Paterno</label>
+                <input type="text" class="form-control" id="new-lastname" required>
+            </div>
+            <div class="mb-3">
+                <label for="new-lastname2" class="form-label">Apellido Materno</label>
+                <input type="text" class="form-control" id="new-lastname" required>
+            </div>
+            <div class="mb-3">
+                <label for="new-gender" class="form-label">Genero</label>
+                <select class="form-select" id="new-gender" required>
+                    <option value="Masc">Masculino</option>
+                    <option value="Fem">Femenino</option>
+                </select>
+            </div>
+            <div class="mb-3">
+              <label for="new_nacimiento" class="form-label">Fecha de Nacimiento</label>
+              <input type="date" id="new_nacimiento" name="fecha_seleccionada" required>
+            </div>
+          </form>
+        </div>
 
       <div class="col-6 col-md-3 col-lg-2 col-xl-2 mt-4" id="add-patient-card-container">
         <div class="patient-card card text-center add-patient-card">
