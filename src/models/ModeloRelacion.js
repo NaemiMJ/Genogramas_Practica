@@ -18,7 +18,7 @@ const relacionSchema = new Schema({
     type: String,
     required: false,
     default: null,
-    enum: ['cercana', 'violenta', 'muy_estrecha', 'estrecha_violenta', 'hosti', 'distante', 'quiebre', 'muy_buena']
+    enum: ['cercana', 'violenta', 'muy_estrecha', 'estrecha_violenta', 'hostil', 'distante', 'quiebre', 'muy_buena']
   },
   
   fecha_inicio: Date,

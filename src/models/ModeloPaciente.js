@@ -9,18 +9,10 @@ const pacienteSchema = new Schema({
     required: true,
     unique: true 
   },
-  
-  numero_ficha: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  
   fecha_ingreso: {
     type: Date,
     default: Date.now
   },
-  historial_medico_resumido: String
 });
 
 const Paciente = mongoose.model('Paciente', pacienteSchema);
