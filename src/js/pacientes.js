@@ -30,13 +30,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     // --- 2. Función para Calcular Edad (Utilidad) ---
-    const calcularEdad = (fechaNacimiento) => {
+   const calcularEdad = (fechaNacimiento) => {
         if (!fechaNacimiento) return '?';
         const hoy = new Date();
-        const cumple = new Date(fechaNacimiento);
-        let edad = hoy.getFullYear() - cumple.getFullYear();
-        const m = hoy.getMonth() - cumple.getMonth();
-        if (m < 0 || (m === 0 && hoy.getDate() < cumple.getDate())) {
+        const cumple = new Date(fechaNacimiento); 
+
+        const anioNac = cumple.getUTCFullYear();
+        const mesNac = cumple.getUTCMonth(); // 0-11
+        const diaNac = cumple.getUTCDate(); // 1-31
+
+        let edad = hoy.getFullYear() - anioNac;
+        const m = hoy.getMonth() - mesNac;
+
+        if (m < 0 || (m === 0 && hoy.getDate() < diaNac)) {
             edad--;
         }
         return edad;
@@ -61,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Creamos la tarjeta
         colDiv.innerHTML = `
-        <div class="patient-card card h-100 w-100">
+        <div class="patient-card card h-100 w-100" style="cursor: pointer;">
             <div class="card-body patient-card-body text-center">
                 <div class="patient-avatar mb-2">
                     <i class="bi bi-person-circle text-secondary"></i>
@@ -74,6 +80,13 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         patientListContainer.insertBefore(colDiv, document.getElementById('add-patient-card-container'));
+
+        const cardElement = colDiv.querySelector('.patient-card');
+            if (cardElement) {
+                cardElement.addEventListener('click', () => {
+                    window.location.href = `../../pages/paciente_especifico.html?id=${paciente._id}`;
+                });
+            }
     };
 
     const renderListaPacientes = (listaPacientes) => {

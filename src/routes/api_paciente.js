@@ -108,5 +108,31 @@ router.post('/', async (req, res) => {
     session.endSession();
   }
 });
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params; // Obtiene el ID de la URL
+
+    // Validar que el ID sea un ObjectId válido de Mongoose
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ msg: 'ID de paciente no válido' });
+    }
+
+    // Buscar al paciente por su ID y popular la información de la persona
+    const paciente = await Paciente.findById(id)
+                                   .populate('persona'); // <-- La clave
+
+    // Manejar el caso "No encontrado"
+    if (!paciente) {
+      return res.status(404).json({ msg: 'Paciente no encontrado' });
+    }
+
+    // Enviar la respuesta
+    res.status(200).json(paciente);
+
+  } catch (error) {
+    console.error('Error al obtener paciente por ID:', error);
+    res.status(500).json({ msg: 'Error del servidor al obtener paciente', error: error.message });
+  }
+});
 
 module.exports = router;
