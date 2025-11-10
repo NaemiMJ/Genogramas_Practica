@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const personaSchema = new Schema({
+  rut: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
   nombres: { 
     type: String, 
     required: true 

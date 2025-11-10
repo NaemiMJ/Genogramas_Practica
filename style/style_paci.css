@@ -14,6 +14,7 @@
   border-radius: 12px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
+  min-height: 180px;
   width: 70%;
   aspect-ratio: 1 / 1; 
   display: flex;
@@ -24,14 +25,13 @@
 .bi-plus-lg{
     color: var(--card-border);
 }
-.patient-card .card-body {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem;
-}
 
+.patient-card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
 .patient-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 20px rgba(0,0,0,0.08);
@@ -49,4 +49,9 @@
 
 .add-patient-card .patient-icon {
   color: var(--text-dark);
+  font-size: 2.5rem; 
+}
+
+.patient-avatar {
+  font-size: 3rem; 
 }

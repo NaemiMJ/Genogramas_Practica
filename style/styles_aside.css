@@ -71,25 +71,22 @@
   color: var(--sidebar-bg);
 }
 
-@media (max-width: 991.98px) {
-  /* Por defecto, en pantallas pequeñas, la barra se esconde */
+@media (max-width: 992px) {
   .sidebar {
     transform: translateX(-100%);
   }
   
-  /* El contenido principal ocupa todo el ancho */
   .main-content {
     margin-left: 0;
   }
   
-  /* Cuando el wrapper tiene la clase 'sidebar-visible', la barra aparece */
-  .page-wrapper.sidebar-visible .sidebar {
+  .page-wrapper.sidebar-open .sidebar {
     transform: translateX(0);
   }
 
-  /* También se muestra el overlay */
-  .page-wrapper.sidebar-visible .sidebar-overlay {
+  .page-wrapper.sidebar-open .sidebar-overlay {
     opacity: 1;
     visibility: visible;
   }
 }
+
