@@ -9,10 +9,29 @@ const pacienteSchema = new Schema({
     required: true,
     unique: true 
   },
+
+  activo: {
+    type: Boolean,
+    default: true 
+  },
+
   fecha_ingreso: {
     type: Date,
     default: Date.now
   },
+
+  foto_url: {
+    type: String,
+    default: null 
+  },
+  archivos_adjuntos: [
+    {
+      nombre_archivo: { type: String, required: true },
+      url_archivo: { type: String, required: true },
+      fecha_subida: { type: Date, default: Date.now },
+      tipo_archivo: { type: String, required: true },
+    }
+  ]
 });
 
 const Paciente = mongoose.model('Paciente', pacienteSchema);

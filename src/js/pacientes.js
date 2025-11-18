@@ -4,16 +4,43 @@ document.addEventListener('DOMContentLoaded', () => {
     const patientListContainer = document.getElementById('patient-list-container');
     const createPacienteModalEl = document.getElementById('createPacienteModal');
     const createPacienteModal = bootstrap.Modal.getInstance(createPacienteModalEl) || new bootstrap.Modal(createPacienteModalEl);
+    
     const searchForm = document.getElementById('search-user-form'); 
     const searchInput = document.getElementById('search-input'); 
     const searchClearBtn = document.getElementById('search-clear-btn');
 
-    // URL de tu API (asegúrate que el puerto 3001 sea correcto)
     const API_URL = 'http://localhost:3001/api/pacientes';
+    let todosLosPacientes = []; 
 
-    let todosLosPacientes = []; // Almacen de Pacientes
+    // ==========================================
+    // 1. DETECCIÓN DE ROL (Segura)
+    // ==========================================
+    const getUserRole = () => {
+        // Busca 'rol' o 'role' directo
+        let rol = localStorage.getItem('rol') || localStorage.getItem('role');
+        
+        // Si no, busca dentro de un objeto 'usuario' o 'user'
+        if (!rol) {
+            const usuarioGuardado = localStorage.getItem('usuario') || localStorage.getItem('user');
+            if (usuarioGuardado) {
+                try {
+                    const usuarioObj = JSON.parse(usuarioGuardado);
+                    rol = usuarioObj.rol || usuarioObj.role || usuarioObj.tipo;
+                } catch (e) {
+                    console.warn("Error leyendo usuario de localStorage", e);
+                }
+            }
+        }
+        return rol || 'Usuario'; 
+    };
 
-    // --- 1. Función de Notificación (Toast) ---
+    // Comprobamos si es Administrador (ajusta el string según tu BD)
+    const rolDetectado = getUserRole();
+    const esAdmin = rolDetectado === 'Administrador' || rolDetectado === 'admin';
+    console.log("Rol:", rolDetectado, "| Admin:", esAdmin);
+
+    // --- Utilerías ---
+
     const showToast = (icon, title) => {
         const Toast = Swal.mixin({
             toast: true,
@@ -29,179 +56,271 @@ document.addEventListener('DOMContentLoaded', () => {
         Toast.fire({ icon, title });
     };
     
-    // --- 2. Función para Calcular Edad (Utilidad) ---
    const calcularEdad = (fechaNacimiento) => {
         if (!fechaNacimiento) return '?';
         const hoy = new Date();
         const cumple = new Date(fechaNacimiento); 
-
-        const anioNac = cumple.getUTCFullYear();
-        const mesNac = cumple.getUTCMonth(); // 0-11
-        const diaNac = cumple.getUTCDate(); // 1-31
-
-        let edad = hoy.getFullYear() - anioNac;
-        const m = hoy.getMonth() - mesNac;
-
-        if (m < 0 || (m === 0 && hoy.getDate() < diaNac)) {
+        let edad = hoy.getFullYear() - cumple.getUTCFullYear();
+        const m = hoy.getMonth() - cumple.getUTCMonth(); 
+        if (m < 0 || (m === 0 && hoy.getDate() < cumple.getUTCDate())) {
             edad--;
         }
         return edad;
     };
 
-    // --- 3. Función para Renderizar UNA tarjeta de paciente ---
+    const formatearRut = (rut) => {
+        if (!rut) return 'N/A';
+        let valor = rut.toString().replace(/[^0-9kK]/g, '');
+        if (valor.length < 2) return rut;
+        
+        let cuerpo = valor.slice(0, -1);
+        let dv = valor.slice(-1).toUpperCase();
+        cuerpo = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        return `${cuerpo}-${dv}`;
+    };
+
+    // ==========================================
+    // 2. RENDERIZADO DE TARJETAS
+    // ==========================================
     const renderPaciente = (paciente) => {
-        if (!paciente || !paciente.persona) {
-            console.warn('Intento de renderizar paciente inválido:', paciente);
-            return;
-        }
+        if (!paciente || !paciente.persona) return;
 
         const persona = paciente.persona;
         const edad = calcularEdad(persona.fecha_nacim);
+        const rutFormateado = formatearRut(persona.rut);
+
         const iconoSexo = persona.sexo === 'Masc' 
             ? '<i class="bi bi-gender-male text-primary"></i>' 
             : '<i class="bi bi-gender-female text-danger"></i>';
 
-        // Creamos la columna
+        // Lógica Visual: Activo / Inactivo
+        const estaActivo = paciente.activo !== false; 
+        const opacityStyle = estaActivo ? '' : 'opacity: 0.6; filter: grayscale(100%);';
+        const badgeEstado = estaActivo ? '' : '<span class="badge bg-secondary position-absolute top-0 start-0 m-2" style="z-index: 5;">Inactivo</span>';
+
         const colDiv = document.createElement('div');
         colDiv.className = 'col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 dynamic-patient-card';
+        colDiv.id = `paciente-card-${paciente._id}`; 
         
-        // Creamos la tarjeta
+        // Botón Admin (Solo si es Admin)
+        let botonGestion = '';
+        if (esAdmin) {
+            botonGestion = `
+            <button class="btn btn-sm btn-danger btn-gestionar-paciente" 
+                    title="Gestionar"
+                    style="position: absolute; top: 5px; right: 5px; z-index: 100; border-radius: 50%; width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                <i class="bi bi-gear-fill" style="font-size: 0.9rem;"></i>
+            </button>`;
+        }
+
         colDiv.innerHTML = `
-        <div class="patient-card card h-100 w-100" style="cursor: pointer;">
-            <div class="card-body patient-card-body text-center">
+        <div class="patient-card card h-100 w-100 position-relative" style="${opacityStyle}">
+            ${badgeEstado}
+            ${botonGestion}
+            <div class="card-body patient-card-body text-center" style="cursor: pointer;">
                 <div class="patient-avatar mb-2">
-                    <i class="bi bi-person-circle text-secondary"></i>
+                    ${paciente.foto_url 
+                        ? `<img src="${paciente.foto_url}" class="rounded-circle" style="width:50px; height:50px; object-fit:cover;">` 
+                        : `<i class="bi bi-person-circle text-secondary" style="font-size: 2rem;"></i>`
+                    }
                 </div>
                 <h6 class="card-title mb-1">${persona.nombres}</h6>
                 <p class="card-text text-muted small mb-0">${persona.apellido_pa} ${persona.apellido_mat || ''}</p>
-                <p class="card-text text-muted small mb-1">RUT: ${persona.rut || 'N/A'}</p>
+                <p class="card-text text-muted small mb-1">RUT: ${rutFormateado}</p>
                 <p class="card-text text-muted small">${edad} años ${iconoSexo}</p>
             </div>
-            </div>
+        </div>
         `;
+        
         patientListContainer.insertBefore(colDiv, document.getElementById('add-patient-card-container'));
 
-        const cardElement = colDiv.querySelector('.patient-card');
-            if (cardElement) {
-                cardElement.addEventListener('click', () => {
-                    window.location.href = `../../pages/paciente_especifico.html?id=${paciente._id}`;
+        // Click en tarjeta -> Ver detalle
+        colDiv.querySelector('.patient-card-body').addEventListener('click', () => {
+            window.location.href = `../../pages/paciente_especifico.html?id=${paciente._id}`;
+        });
+
+        // Click en engranaje -> Gestionar (Solo Admin)
+        if (esAdmin) {
+            const btn = colDiv.querySelector('.btn-gestionar-paciente');
+            if(btn) {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation(); 
+                    handleGestionarPaciente(paciente); 
                 });
             }
+        }
     };
 
     const renderListaPacientes = (listaPacientes) => {
         document.querySelectorAll('.dynamic-patient-card').forEach(card => card.remove());
-
-        if (listaPacientes.length === 0) {
-            console.log("No se encontraron pacientes.");
-        } else {
-            listaPacientes.forEach(renderPaciente); 
-        }
+        listaPacientes.forEach(renderPaciente); 
     };
 
-    // --- 4. Función para Cargar TODOS los pacientes ---
     const cargarPacientes = async () => {
         try {
             const response = await fetch(API_URL); 
-            if (!response.ok) {
-                throw new Error('No se pudieron cargar los pacientes.');
-            }
-            const pacientes = await response.json();
-            
-            todosLosPacientes = pacientes; 
+            if (!response.ok) throw new Error('Error al cargar');
+            todosLosPacientes = await response.json();
             renderListaPacientes(todosLosPacientes);
-
         } catch (error) {
-            console.error('Error al cargar pacientes:', error);
-            showToast('error', error.message);
+            console.error(error);
+            showToast('error', 'Error al cargar pacientes');
         }
     };
 
-    // --- 5. Lógica de Búsqueda  ---
+    // ==========================================
+    // 3. BÚSQUEDA INTELIGENTE
+    // ==========================================
     if (searchForm) {
-        
         const filtrarPacientes = () => {
             const searchTerm = searchInput.value.toLowerCase().trim();
-            
             if (searchTerm === '') {
                 renderListaPacientes(todosLosPacientes);
                 return;
             }
+            // Limpia puntos y guiones para comparar RUTs
+            const searchTermLimpio = searchTerm.replace(/[^0-9kK]/g, '');
 
             const pacientesFiltrados = todosLosPacientes.filter(paciente => {
-                const persona = paciente.persona;
-                if (!persona) return false;
+                const p = paciente.persona;
+                if (!p) return false;
+                
+                const nombreCompleto = `${p.nombres} ${p.apellido_pa} ${p.apellido_mat || ''}`.toLowerCase();
+                const rutLimpio = (p.rut || '').replace(/[^0-9kK]/g, '').toLowerCase();
 
-                const nombreCompleto = `${persona.nombres} ${persona.apellido_pa} ${persona.apellido_mat || ''}`.toLowerCase();
-                const rut = (persona.rut || '').toLowerCase(); // Buscamos también por RUT
-
-                return nombreCompleto.includes(searchTerm) || rut.includes(searchTerm);
+                return nombreCompleto.includes(searchTerm) || rutLimpio.includes(searchTermLimpio);
             });
-
             renderListaPacientes(pacientesFiltrados);
         };
 
-        searchForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            filtrarPacientes();
-        });
-
-        searchClearBtn.addEventListener('click', () => {
-            searchInput.value = ''; 
-            renderListaPacientes(todosLosPacientes); 
-        });
+        searchForm.addEventListener('submit', (e) => { e.preventDefault(); filtrarPacientes(); });
+        searchClearBtn.addEventListener('click', () => { searchInput.value = ''; renderListaPacientes(todosLosPacientes); });
+        searchInput.addEventListener('input', filtrarPacientes);
     }
 
+    // ==========================================
+    // 4. GESTIÓN ADMIN (Eliminar / Desactivar)
+    // ==========================================
+    const handleGestionarPaciente = async (paciente) => {
+        const estaActivo = paciente.activo !== false;
+        
+        const result = await Swal.fire({
+            title: 'Gestión de Paciente',
+            text: `Acciones para ${paciente.persona.nombres}`,
+            icon: 'question',
+            showDenyButton: true,       
+            showCancelButton: true,     
+            confirmButtonText: 'Eliminar Permanentemente', 
+            confirmButtonColor: '#d33',
+            denyButtonText: estaActivo ? "Desactivar" : "Activar",                   
+            denyButtonColor: estaActivo ? "#f0ad4e" : "#198754",
+            cancelButtonText: 'Cancelar'
+        });
 
-    // --- Lógica del Formulario de Creación ---
+        // A. Hard Delete (Borrar BD)
+        if (result.isConfirmed) {
+            const confirmDelete = await Swal.fire({
+                title: '¿Seguro?',
+                text: "Se borrarán todos los datos y archivos permanentemente.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Sí, eliminar'
+            });
+
+            if (confirmDelete.isConfirmed) {
+                try {
+                    const res = await fetch(`${API_URL}/${paciente._id}`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error('Error al eliminar');
+                    
+                    showToast('success', 'Paciente eliminado');
+                    todosLosPacientes = todosLosPacientes.filter(p => p._id !== paciente._id);
+                    document.getElementById(`paciente-card-${paciente._id}`).remove();
+                } catch (err) {
+                    showToast('error', err.message);
+                }
+            }
+        } 
+        // B. Soft Delete (Activar/Desactivar)
+        else if (result.isDenied) {
+            try {
+                const res = await fetch(`${API_URL}/${paciente._id}/estado`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ activo: !estaActivo })
+                });
+
+                if (!res.ok) throw new Error('Error al cambiar estado');
+                const data = await res.json();
+                
+                showToast('success', data.msg);
+                
+                // Actualizar localmente
+                const index = todosLosPacientes.findIndex(p => p._id === paciente._id);
+                if (index !== -1) {
+                    todosLosPacientes[index] = data.paciente;
+                    renderListaPacientes(todosLosPacientes); 
+                }
+            } catch (err) {
+                showToast('error', err.message);
+            }
+        }
+    };
+
+    // ==========================================
+    // 5. CREAR PACIENTE (CORREGIDO)
+    // ==========================================
     if (createPacienteForm) {
         createPacienteForm.addEventListener('submit', async (e) => {
-            e.preventDefault(); 
+            e.preventDefault();
 
+            // 1. Capturar datos usando FormData (Requiere name="..." en HTML)
+            const formData = new FormData(createPacienteForm);
+
+            // 2. Construir objeto PLANO para enviar al Backend
             const pacienteData = {
-                rut: document.getElementById('new-rut').value, // <-- AÑADIDO
-                nombres: document.getElementById('new-name').value,
-                apellido_pa: document.getElementById('new-lastname1').value,
-                apellido_mat: document.getElementById('new-lastname2').value,
-                sexo: document.getElementById('new-gender').value,
-                fecha_nacim: document.getElementById('new_nacimiento').value
+                rut: formData.get('rut'),
+                nombres: formData.get('nombres'),
+                apellido_pa: formData.get('apellido_pa'),
+                apellido_mat: formData.get('apellido_mat'),
+                sexo: formData.get('sexo'),
+                fecha_nacim: formData.get('fecha_nacim'),
+                // Si agregas más campos, ponlos aquí directos
             };
 
+            // Validación simple
+            if (!pacienteData.rut || !pacienteData.nombres || !pacienteData.apellido_pa || !pacienteData.sexo || !pacienteData.fecha_nacim) {
+                showToast('warning', 'Por favor completa los campos obligatorios.');
+                return;
+            }
+
             try {
-                const response = await fetch(API_URL, { // POST
+                const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(pacienteData)
+                    body: JSON.stringify(pacienteData) // Enviamos el objeto plano
                 });
 
                 if (!response.ok) {
-                    let errorMsg = `Error ${response.status}: ${response.statusText}`;
-                    try {
-                        const errorData = await response.json();
-                        errorMsg = errorData.msg || JSON.stringify(errorData);
-                    } catch (e) { /* Usar statusText */ }
-                    throw new Error(errorMsg);
+                    const errorData = await response.json();
+                    throw new Error(errorData.msg || 'Error al crear paciente');
                 }
 
                 const nuevoPaciente = await response.json();
-
-                // --- ¡ÉXITO! ---
-                showToast('success', '¡Paciente creado exitosamente!');
+                showToast('success', 'Paciente creado exitosamente');
                 
-                renderPaciente(nuevoPaciente); // <-- Añadimos la tarjeta dinámicamente
+                todosLosPacientes.push(nuevoPaciente);
+                renderPaciente(nuevoPaciente);
                 
                 createPacienteForm.reset();
                 createPacienteModal.hide();
 
             } catch (error) {
-                console.error('Error al crear paciente:', error);
-                showToast('error', `Error: ${error.message}`); // <-- Notificación de error
+                console.error(error);
+                showToast('error', error.message);
             }
         });
     }
 
-    // --- Carga Inicial ---
-    // Carga todos los pacientes cuando la página esté lista
     cargarPacientes();
-
 });

@@ -1,3 +1,4 @@
+
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
@@ -45,30 +46,16 @@ const personaSchema = new Schema({
     enum: ['Vivo', 'Fallecido'],
     default: 'Vivo'
   },
-  fecha_fallecimiento: { // Opcional, para saber cuándo
+  fecha_fallecimiento: { 
     type: Date,
     default: null
   },
   notas: {
     type: String,
-    default: '' // Un campo de texto libre para notas, vicios, etc.
+    default: '' 
   },
 
-  archivos_adjuntos: [
-    {
-      nombre_archivo: { type: String, required: true },
-      url_archivo: { type: String, required: true }, // Aquí guardas la URL al archivo
-      fecha_subida: { type: Date, default: Date.now },
-      tipo_archivo: { 
-        type: String, 
-        required: true 
-      },
-    }
-  ]
 });
-
-
-
 
 const Persona = mongoose.model('Persona', personaSchema);
 module.exports = Persona;

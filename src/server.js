@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config({ path: '../.env' }); // Mantenemos tu path de .env
 
 // --- Importar las rutas de la API ---
@@ -13,6 +14,7 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
 // --- Conexión a MongoDB Atlas ---
 const connectDB = async () => {
   try {
@@ -25,8 +27,7 @@ const connectDB = async () => {
 };
 
 // --- USAR LAS RUTAS DE LA API ---
-// Le decimos a Express que CUALQUIER ruta que empiece con '/api'
-// debe ser manejada por el archivo 'apiRoutes'
+
 app.use('/api', apiRoutes);
 
 // --- Iniciar servidor ---
