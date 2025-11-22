@@ -21,6 +21,7 @@
 </head>
 <body>
   <h1>Genograma</h1>
+  <button id="btnGuardarDB" class="btn-save">💾 Guardar Cambios</button
 
   <!-- Formulario inicial: solo paciente -->
   <div class="form-wrapper" id="formPaciente">
@@ -487,6 +488,37 @@ window.addEventListener('resize', () => {
   requestAnimationFrame(dibujarConexiones);
 });
 
+function initFromParams() {
+  const params = new URLSearchParams(window.location.search);
+  
+  // Verificar si tenemos los parámetros mínimos
+  if (params.has('nombre')) {
+    const pNombre = params.get('nombre');
+    const pApellido = params.get('apellido') || '';
+    const pEdad = params.get('edad') || 0;
+    const pSexo = params.get('sexo') || 'M';
+
+    // Crear el objeto paciente directamente
+    patient = {
+      id: uid(),
+      nombre: pNombre,
+      apellido: pApellido,
+      edad: pEdad,
+      sexo: pSexo,
+      esPaciente: true
+    };
+
+    // Ocultar el formulario inicial porque ya tenemos paciente
+    if (formPaciente) {
+      formPaciente.style.display = 'none';
+    }
+  }
+}
+
+// Ejecutamos la función
+initFromParams();
+
+/* Render final */
 render();
 </script>
 </body>

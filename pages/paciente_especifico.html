@@ -21,7 +21,7 @@
 
     <aside class="sidebar">
     <div class="sidebar-header text-center">
-        <div class="user-avatar mx-auto mb-2">
+        <div class="user-avatar mx-auto mb-2">n
           <img src="../assets/logo_sintergia.png" width="80px"> 
         </div>
         <h5 class="user-name"></h5>
@@ -94,7 +94,9 @@
                        style="max-height: 240px;">
                 </div>
                 <div class="mt-3 d-flex flex-wrap gap-2">
-                  <button class="btn btn-primary"><i class="bi bi-pencil-square me-1"></i> Editar Genograma</button>
+                  <button id="btnEditarGenograma" class="btn btn-primary">
+                    <i class="bi bi-pencil-square me-1"></i> Editar Genograma
+                  </button>
                   <button class="btn btn-secondary"><i class="bi bi-box-arrow-down me-1"></i> Exportar Genograma</button>
                 </div>
               </div>
@@ -137,6 +139,34 @@
 
 <script src="../src/js/aside.js"></script>
 <script src="../src/js/paciente_detalle.js"></script>
+<script>
+  document.getElementById('btnEditarGenograma').addEventListener('click', function() {
+    // 1. Obtener datos actuales del DOM
+    // Asumimos que el nombre completo está en el header o se puede deducir
+    const nombreCompleto = document.querySelector('.content-header').textContent.replace('Cargando paciente...', '').trim();
+    const edadTexto = document.getElementById('detalle-edad').textContent; 
+    const sexoTexto = document.getElementById('detalle-sexo').textContent;
+    
+    // 2. Limpiar y formatear datos
+    // Separar nombre y apellido (lógica simple, toma la primera palabra como nombre)
+    const partesNombre = nombreCompleto.split(' ');
+    const nombre = partesNombre[0] || 'Paciente';
+    const apellido = partesNombre.slice(1).join(' ') || '';
+    
+    // Extraer solo el número de la edad
+    const edad = parseInt(edadTexto) || 0;
+    
+    // Convertir sexo a formato del genograma (M/F)
+    // Asumimos que en detalle-sexo dice "Masculino" o "Femenino"
+    let sexo = 'M';
+    if (sexoTexto.toLowerCase().includes('femenino') || sexoTexto.toLowerCase().includes('mujer')) {
+      sexo = 'F';
+    }
 
+    const url = `genograma.html?nombre=${encodeURIComponent(nombre)}&apellido=${encodeURIComponent(apellido)}&edad=${edad}&sexo=${sexo}`;
+    
+    window.location.href = url;
+  });
+</script>
 </body>
 </html>

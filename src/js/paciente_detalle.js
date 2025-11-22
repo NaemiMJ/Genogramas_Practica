@@ -103,8 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
             day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' 
         });
 
-        header.textContent = `Ficha de: ${persona.nombres} ${persona.apellido_pa} ${persona.apellido_mat || ''}`;
-        detalleRut.textContent = persona.rut || 'N/A';
+        header.textContent = `${persona.nombres} ${persona.apellido_pa} ${persona.apellido_mat || ''}`;
+        detalleRut.textContent = formatearRut(persona.rut); 
         detalleSexo.textContent = persona.sexo === 'Masc' ? 'Masculino' : 'Femenino';
         detalleFecNac.textContent = fechaFormateada;
         detalleEdad.textContent = `${calcularEdad(persona.fecha_nacim)} años`;
