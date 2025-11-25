@@ -126,23 +126,26 @@ const hermanosLeft = document.getElementById('hermanos-left');
 const hermanosRight = document.getElementById('hermanos-right');
 const pacienteSlot = document.getElementById('paciente-slot');
 const hijosSlot = document.getElementById('hijos');
-const conexionesDiv = document.getElementById('conexiones');
 const genogramaContainer = document.querySelector('.genograma-container');
+const middleRow = document.getElementById('middle'); 
+const hijosRow = document.getElementById('hijos'); 
 
+// UI
 const formPaciente = document.getElementById('formPaciente');
 const agregarPacienteBtn = document.getElementById('agregarPaciente');
-
 const menu = document.getElementById('menuAcciones');
 const menuAgregarBtn = document.getElementById('menuAgregar');
 const menuEliminarBtn = document.getElementById('menuEliminar');
-
 const formFamiliar = document.getElementById('formFamiliar');
 const guardarFamiliarBtn = document.getElementById('guardarFamiliarBtn');
 
-const getNum = v => {
-  const n = parseInt(v);
-  return Number.isFinite(n) ? n : null;
-};
+/* ========== Utilidades ========== */
+const getNum = v => { const n = parseInt(v); return Number.isFinite(n) ? n : null; };
+
+function getCenterX(el) {
+  const r = el.getBoundingClientRect();
+  return r.left + r.width / 2;
+}
 
 /* ========== Crear nodo persona ========== */
 function crearNodo(persona) {
@@ -166,269 +169,215 @@ function crearNodo(persona) {
     seleccionado = persona;
     abrirMenu(e.pageX, e.pageY);
   });
-
   return div;
 }
 
-/* ========== Konva: stage y layer globales (se recrean en dibujarConexiones si cambia tamaño) ========== */
+/* ========== Konva Config ========== */
 let stage = null;
 let layer = null;
 
-/* ========== Renderizar genograma ========== */
+/* ========== Lógica de Alineación ========== */
+function alinearGenograma() {
+  middleRow.style.transform = '';
+  hijosRow.style.transform = '';
+
+  const fatherDom = padreSlot.querySelector('.persona');
+  const motherDom = madreSlot.querySelector('.persona');
+  const patientDom = pacienteSlot.querySelector('.persona');
+  const partnerDom = partnerLeftSlot.querySelector('.persona') || partnerRightSlot.querySelector('.persona');
+  
+  let shiftMiddle = 0;
+
+  // 1. Alinear Paciente bajo Padres
+  if ((fatherDom || motherDom) && patientDom) {
+    let parentsCenter = 0;
+    if (fatherDom && motherDom) {
+      parentsCenter = (getCenterX(fatherDom) + getCenterX(motherDom)) / 2;
+    } else {
+      parentsCenter = getCenterX(fatherDom || motherDom);
+    }
+    const patientNaturalCenter = getCenterX(patientDom);
+    shiftMiddle = parentsCenter - patientNaturalCenter;
+  }
+
+  // 2. Alinear Hijos bajo Matrimonio
+  let shiftHijos = 0;
+  const hijosNodes = Array.from(hijosSlot.querySelectorAll('.persona'));
+
+  if (patientDom && hijosNodes.length > 0) {
+    const patientVisualX = getCenterX(patientDom) + shiftMiddle;
+    let marriageVisualCenter = patientVisualX;
+
+    if (partnerDom) {
+      const partnerVisualX = getCenterX(partnerDom) + shiftMiddle;
+      marriageVisualCenter = (patientVisualX + partnerVisualX) / 2;
+    }
+
+    const firstChildRect = hijosNodes[0].getBoundingClientRect();
+    const lastChildRect = hijosNodes[hijosNodes.length - 1].getBoundingClientRect();
+    const childrenGroupCenter = (firstChildRect.left + lastChildRect.right) / 2;
+    shiftHijos = marriageVisualCenter - childrenGroupCenter;
+  }
+
+  // Aplicar transforms
+  if (Math.abs(shiftMiddle) > 0.5) middleRow.style.transform = `translateX(${shiftMiddle}px)`;
+  if (Math.abs(shiftHijos) > 0.5) hijosRow.style.transform = `translateX(${shiftHijos}px)`;
+}
+
+/* ========== Renderizar ========== */
 function render() {
-  padreSlot.innerHTML = '';
-  madreSlot.innerHTML = '';
-  partnerLeftSlot.innerHTML = '';
-  partnerRightSlot.innerHTML = '';
-  hermanosLeft.innerHTML = '';
-  hermanosRight.innerHTML = '';
-  pacienteSlot.innerHTML = '';
-  hijosSlot.innerHTML = '';
+  padreSlot.innerHTML = ''; madreSlot.innerHTML = '';
+  partnerLeftSlot.innerHTML = ''; partnerRightSlot.innerHTML = '';
+  hermanosLeft.innerHTML = ''; hermanosRight.innerHTML = '';
+  pacienteSlot.innerHTML = ''; hijosSlot.innerHTML = '';
 
   if (parents.father) padreSlot.appendChild(crearNodo(parents.father));
   if (parents.mother) madreSlot.appendChild(crearNodo(parents.mother));
 
   if (!patient) {
-    // si no hay paciente, colocamos hermanos en el centro por defecto
-    siblings.sort((a,b) => (getNum(b.edad)||0) - (getNum(a.edad)||0))
-      .forEach(s => {
-        // repartir por igual alrededor
-        hermanosRight.appendChild(crearNodo(s));
-      });
+    siblings.sort((a,b) => (getNum(b.edad)||0) - (getNum(a.edad)||0)).forEach(s => hermanosRight.appendChild(crearNodo(s)));
     requestAnimationFrame(dibujarConexiones);
     return;
   }
 
-  // Orden global hermanos: mayor -> menor (izquierda a derecha)
   const sortedSiblings = [...siblings].sort((a,b) => (getNum(b.edad)||0) - (getNum(a.edad)||0));
-
-  // Determinar posición del paciente: si es mayor que todos -> leftmost, si menor -> rightmost, sino en centro (aprox middle)
   const pAge = getNum(patient.edad) || 0;
+  
+  let insertIndex = Math.floor(sortedSiblings.length / 2);
   const maxSibAge = sortedSiblings.length ? (getNum(sortedSiblings[0].edad)||0) : null;
   const minSibAge = sortedSiblings.length ? (getNum(sortedSiblings[sortedSiblings.length-1].edad)||0) : null;
 
-  let insertIndex;
-  if (sortedSiblings.length === 0) {
-    insertIndex = 0;
-  } else if (maxSibAge !== null && pAge > maxSibAge) {
-    // paciente más viejo -> al inicio (izquierda)
-    insertIndex = 0;
-  } else if (minSibAge !== null && pAge < minSibAge) {
-    // paciente más joven -> al final (derecha)
-    insertIndex = sortedSiblings.length;
-  } else {
-    // paciente al centro: colocarlo en la mitad de la lista de hermanos
-    insertIndex = Math.floor(sortedSiblings.length / 2);
+  if (sortedSiblings.length > 0) {
+      if (maxSibAge !== null && pAge > maxSibAge) insertIndex = 0;
+      else if (minSibAge !== null && pAge < minSibAge) insertIndex = sortedSiblings.length;
   }
 
-  // Construir secuencia combinada (hermanos con paciente insertado) para mantener orden mayor->menor
   const sequence = [...sortedSiblings];
   sequence.splice(insertIndex, 0, patient);
-  const patientIndex = insertIndex;
+  
+  const leftSeq = sequence.slice(0, insertIndex);
+  const rightSeq = sequence.slice(insertIndex + 1);
 
-  // Dividir en left (antes paciente) y right (después paciente)
-  const leftSeq = sequence.slice(0, patientIndex);
-  const rightSeq = sequence.slice(patientIndex + 1);
-
-  // Renderizar hermanos a la izquierda (leftSeq) en orden left->right (mayor a menor)
   leftSeq.forEach(s => hermanosLeft.appendChild(crearNodo(s)));
-
-  // Renderizar paciente en su slot
   pacienteSlot.appendChild(crearNodo(patient));
-
-  // Renderizar hermanos a la derecha (rightSeq)
   rightSeq.forEach(s => hermanosRight.appendChild(crearNodo(s)));
 
-  // Pareja: se coloca en extremo izquierdo o derecho según sexo (pero en su propio slot, no dentro de la secuencia,
-  // para que no desplaze la centración del bloque central)
   if (partner) {
-    if (partner.sexo === 'M') {
-      // pareja hombre a la izquierda
-      partnerLeftSlot.appendChild(crearNodo(partner));
-    } else {
-      // pareja mujer a la derecha
-      partnerRightSlot.appendChild(crearNodo(partner));
-    }
+    if (partner.sexo === 'M') partnerLeftSlot.appendChild(crearNodo(partner));
+    else partnerRightSlot.appendChild(crearNodo(partner));
   }
 
-  // Hijos: ordenar mayor -> menor (izquierda a derecha)
   children.sort((a,b) => (getNum(b.edad)||0) - (getNum(a.edad)||0))
     .forEach(h => hijosSlot.appendChild(crearNodo(h)));
 
-  requestAnimationFrame(dibujarConexiones);
+  // Doble frame para asegurar layout
+  requestAnimationFrame(() => {
+    alinearGenograma();
+    requestAnimationFrame(() => {
+      dibujarConexiones(); 
+    });
+  });
 }
 
-/* ========== Dibujar conexiones con Konva ========== */
+/* ========== Dibujar conexiones (CORREGIDO CLIPPING) ========== */
 function dibujarConexiones() {
-  // ajustar tamaño del stage al contenedor
-  const rect = genogramaContainer.getBoundingClientRect();
-  const width = rect.width;
-  const height = rect.height;
-
-  // crear/recrear stage si es necesario
+  // CORRECCIÓN: Usar scrollWidth/Height para cubrir todo el contenido desbordado
+  const width = Math.max(genogramaContainer.scrollWidth, genogramaContainer.offsetWidth);
+  const height = Math.max(genogramaContainer.scrollHeight, genogramaContainer.offsetHeight);
+  const rect = genogramaContainer.getBoundingClientRect(); // Para coordenadas relativas
+  
   if (!stage) {
     stage = new Konva.Stage({ container: 'conexiones', width, height });
     layer = new Konva.Layer();
     stage.add(layer);
   } else {
-    // si cambió el tamaño, actualizar
-    if (stage.width() !== width || stage.height() !== height) {
-      stage.width(width);
-      stage.height(height);
-    }
+    stage.width(width); 
+    stage.height(height);
     layer.destroyChildren();
   }
 
+  // Helper de coordenadas que compensa scroll si fuera necesario
   function centerOf(el) {
     if (!el) return null;
     const r = el.getBoundingClientRect();
     return {
-      x: r.left + r.width/2 - rect.left,
-      y: r.top + r.height/2 - rect.top,
-      top: r.top - rect.top,
-      bottom: r.bottom - rect.top,
-      left: r.left - rect.left,
-      right: r.right - rect.left,
-      width: r.width,
-      height: r.height
+      x: r.left + r.width / 2 - rect.left + genogramaContainer.scrollLeft,
+      y: r.top + r.height / 2 - rect.top + genogramaContainer.scrollTop,
+      top: r.top - rect.top + genogramaContainer.scrollTop,
+      bottom: r.bottom - rect.top + genogramaContainer.scrollTop
     };
   }
 
-  // Obtener DOMs relevantes
   const fatherDom = padreSlot.querySelector('.persona');
   const motherDom = madreSlot.querySelector('.persona');
-  const partnerLeftDom = partnerLeftSlot.querySelector('.persona');
-  const partnerRightDom = partnerRightSlot.querySelector('.persona');
+  const partnerDom = partnerLeftSlot.querySelector('.persona') || partnerRightSlot.querySelector('.persona');
   const patientDom = pacienteSlot.querySelector('.persona');
+  
   const leftSibs = Array.from(hermanosLeft.querySelectorAll('.persona'));
   const rightSibs = Array.from(hermanosRight.querySelectorAll('.persona'));
   const hijosDom = Array.from(hijosSlot.querySelectorAll('.persona'));
 
-  /* 1) Línea entre padres (si existen ambos) */
+  // 1) Padres
   if (fatherDom && motherDom) {
     const cf = centerOf(fatherDom), cm = centerOf(motherDom);
-    const line = new Konva.Line({
-      points: [cf.x, cf.y, cm.x, cm.y],
-      stroke: 'black', strokeWidth: 2
-    });
-    layer.add(line);
+    layer.add(new Konva.Line({ points: [cf.x, cf.y, cm.x, cm.y], stroke: 'black', strokeWidth: 2 }));
   }
 
-  /* 2) Conexión padres -> barra de descendencia (paciente + hermanos)
-     Dibujaremos una barra horizontal por debajo de los padres, y líneas verticales hacia cada hijo (paciente+hermanos). */
-  const siblingsAndPatient = [...leftSibs, patientDom, ...rightSibs].filter(Boolean);
-  if ((fatherDom || motherDom) && siblingsAndPatient.length) {
-    // punto central entre padres (si uno falta, usar el que exista)
-    let parentsCenterX, parentsCenterY;
+  // 2) Padres -> Descendencia
+  const allChildren = [...leftSibs, patientDom, ...rightSibs].filter(Boolean);
+  if ((fatherDom || motherDom) && allChildren.length) {
+    let originX, originY;
     if (fatherDom && motherDom) {
       const cf = centerOf(fatherDom), cm = centerOf(motherDom);
-      parentsCenterX = (cf.x + cm.x) / 2;
-      parentsCenterY = Math.max(cf.y, cm.y);
+      originX = (cf.x + cm.x) / 2;
+      originY = (cf.y + cm.y) / 2; 
     } else {
       const single = centerOf(fatherDom || motherDom);
-      parentsCenterX = single.x;
-      parentsCenterY = single.y;
+      originX = single.x; originY = single.bottom;
     }
 
-    // yBar: un poco por encima del top de los elementos hijos (para no intersectar)
-    const minTop = Math.min(...siblingsAndPatient.map(s => centerOf(s).top));
-    const yBar = Math.max(parentsCenterY + 12, minTop - 18);
+    const minTop = Math.min(...allChildren.map(s => centerOf(s).top));
+    const yBar = (originY + minTop) / 2 + 10;
 
-    // trazar la línea vertical desde padresCenter hasta yBar
-    const vLine = new Konva.Line({
-      points: [parentsCenterX, parentsCenterY, parentsCenterX, yBar],
-      stroke: 'black', strokeWidth: 2
-    });
-    layer.add(vLine);
+    layer.add(new Konva.Line({ points: [originX, originY, originX, yBar], stroke: 'black', strokeWidth: 2 }));
 
-    // Para cada hijo/ paciente: trazar vertical desde top del hijo hasta yBar y una horizontal desde parentsCenterX a su x
-    siblingsAndPatient.forEach(s => {
+    allChildren.forEach(s => {
       const c = centerOf(s);
-      // vertical desde top del hijo hasta yBar
-      const v = new Konva.Line({
-        points: [c.x, c.top, c.x, yBar],
-        stroke: 'black', strokeWidth: 2
-      });
-      layer.add(v);
-      // horizontal desde parentsCenterX a c.x en yBar
-      const h = new Konva.Line({
-        points: [parentsCenterX, yBar, c.x, yBar],
-        stroke: 'black', strokeWidth: 2
-      });
-      layer.add(h);
+      layer.add(new Konva.Line({ points: [c.x, c.top, c.x, yBar], stroke: 'black', strokeWidth: 2 }));
+      layer.add(new Konva.Line({ points: [originX, yBar, c.x, yBar], stroke: 'black', strokeWidth: 2 }));
     });
   }
 
-  /* 3) Conexión pareja <-> paciente (barra baja que sale desde abajo de ambos para no molestar hermanos) */
-  // Se detecta pareja real: si partnerLeftDom o partnerRightDom (según el sexo)
-  const partnerDom = partnerLeftDom || partnerRightDom;
+  // 3) Matrimonio (Paciente <-> Pareja)
   if (partnerDom && patientDom) {
-    const cp = centerOf(partnerDom), cpa = centerOf(patientDom);
-    const bottomPartner = cp.bottom;
-    const bottomPatient = cpa.bottom;
-    const yConn = Math.max(bottomPartner, bottomPatient) + 22; // distancia por debajo
-
-    // vertical desde partner bottom hasta yConn
-    const v1 = new Konva.Line({
-      points: [cp.x, bottomPartner, cp.x, yConn],
-      stroke: 'black', strokeWidth: 2
-    });
-    layer.add(v1);
-
-    // vertical desde patient bottom hasta yConn
-    const v2 = new Konva.Line({
-      points: [cpa.x, bottomPatient, cpa.x, yConn],
-      stroke: 'black', strokeWidth: 2
-    });
-    layer.add(v2);
-
-    // horizontal entre partner.x y patient.x en yConn
-    const h = new Konva.Line({
-      points: [cp.x, yConn, cpa.x, yConn],
-      stroke: 'black', strokeWidth: 2
-    });
-    layer.add(h);
+    const cp = centerOf(partnerDom);
+    const cpa = centerOf(patientDom);
+    layer.add(new Konva.Line({ points: [cp.x, cp.y, cpa.x, cpa.y], stroke: 'black', strokeWidth: 2 }));
   }
 
-  /* 4) Conexión paciente/pareja -> hijos (si hay hijos)
-     Se usa el punto medio entre paciente y pareja si existe pareja, sino el paciente solo. */
+  // 4) Hijos
   if (patientDom && hijosDom.length) {
     const cPatient = centerOf(patientDom);
-    let midX = cPatient.x;
-    let yStart = cPatient.bottom + 14;
+    let startX, startY;
 
     if (partnerDom) {
       const cPartner = centerOf(partnerDom);
-      midX = (cPatient.x + cPartner.x) / 2;
-      yStart = Math.max(cPatient.bottom, cPartner.bottom) + 14;
+      startX = (cPatient.x + cPartner.x) / 2;
+      startY = (cPatient.y + cPartner.y) / 2;
+    } else {
+      startX = cPatient.x;
+      startY = cPatient.bottom;
     }
 
-    // determinar yEnd sobre la fila de hijos: tomar top del primer hijo (que será el más alto visualmente)
     const minChildTop = Math.min(...hijosDom.map(h => centerOf(h).top));
-    const yEnd = minChildTop - 12;
+    const yEnd = (startY + minChildTop) / 2 + 15;
+    
+    layer.add(new Konva.Line({ points: [startX, startY, startX, yEnd], stroke: 'black', strokeWidth: 2 }));
 
-    // linea vertical padre->hijos
-    const v = new Konva.Line({
-      points: [midX, yStart, midX, yEnd],
-      stroke: 'black', strokeWidth: 2
-    });
-    layer.add(v);
-
-    // para cada hijo: conectar horizontal en yEnd y luego vertical hacia el hijo
     hijosDom.forEach(h => {
       const ch = centerOf(h);
-      // horizontal desde midX hasta ch.x at yEnd
-      const hline = new Konva.Line({
-        points: [midX, yEnd, ch.x, yEnd],
-        stroke: 'black', strokeWidth: 2
-      });
-      layer.add(hline);
-      // vertical down to top of child
-      const vdown = new Konva.Line({
-        points: [ch.x, yEnd, ch.x, ch.top],
-        stroke: 'black', strokeWidth: 2
-      });
-      layer.add(vdown);
+      layer.add(new Konva.Line({ points: [startX, yEnd, ch.x, yEnd], stroke: 'black', strokeWidth: 2 }));
+      layer.add(new Konva.Line({ points: [ch.x, yEnd, ch.x, ch.top], stroke: 'black', strokeWidth: 2 }));
     });
   }
 
@@ -437,88 +386,54 @@ function dibujarConexiones() {
 
 /* ========== Eventos ========== */
 agregarPacienteBtn.onclick = () => {
-  if (patient) return alert('Ya existe un paciente.');
   const nombre = document.getElementById('nombre').value.trim();
-  if (!nombre) return alert('Ingresa un nombre');
-  patient = { id:uid(), nombre, apellido:document.getElementById('apellido').value.trim(), edad:document.getElementById('edad').value, sexo:document.getElementById('sexo').value, esPaciente:true };
+  if (!nombre) return alert('Ingresa nombre');
+  patient = { id:uid(), nombre, apellido:document.getElementById('apellido').value, edad:document.getElementById('edad').value, sexo:document.getElementById('sexo').value, esPaciente:true };
   formPaciente.style.display='none'; render();
 };
 
 function abrirMenu(x,y){ menu.style.left=x+'px'; menu.style.top=y+'px'; menu.classList.remove('oculto'); }
 function cerrarMenu(){ menu.classList.add('oculto'); seleccionado=null; }
-
 menuAgregarBtn.onclick = ()=>{ cerrarMenu(); abrirFormFamiliar(); };
-menuEliminarBtn.onclick = ()=>{ if(!seleccionado)return; eliminarSeleccionado(); cerrarMenu(); };
-
+menuEliminarBtn.onclick = ()=>{ if(seleccionado) eliminarSeleccionado(); cerrarMenu(); };
 function abrirFormFamiliar(){ formFamiliar.classList.remove('oculto'); }
 function cerrarFormFamiliar(){ formFamiliar.classList.add('oculto'); }
 
 guardarFamiliarBtn.onclick = ()=>{
-  const nombre=document.getElementById('famNombre').value.trim();
-  if(!nombre) return alert('Ingresa un nombre');
-  const persona={ id:uid(), nombre, apellido:document.getElementById('famApellido').value.trim(), edad:document.getElementById('famEdad').value, sexo:document.getElementById('famSexo').value };
-  const rol=document.getElementById('famRol').value;
-  if(rol==='padre'){ if(persona.sexo==='M') parents.father=persona; else parents.mother=persona; }
-  if(rol==='pareja') partner=persona;
-  if(rol==='hermano') siblings.push(persona);
-  if(rol==='hijo') children.push(persona);
+  const nom = document.getElementById('famNombre').value.trim();
+  if(!nom) return;
+  const p = { id:uid(), nombre:nom, apellido:document.getElementById('famApellido').value, edad:document.getElementById('famEdad').value, sexo:document.getElementById('famSexo').value };
+  const rol = document.getElementById('famRol').value;
+  if(rol==='padre') { if(p.sexo==='M') parents.father=p; else parents.mother=p; }
+  else if(rol==='pareja') partner=p;
+  else if(rol==='hermano') siblings.push(p);
+  else if(rol==='hijo') children.push(p);
   cerrarFormFamiliar(); render();
 };
 
 function eliminarSeleccionado(){
-  if(!seleccionado) return;
-  const id=seleccionado.id;
-  if(patient&&patient.id===id){patient=null;formPaciente.style.display='block';}
-  if(parents.father&&parents.father.id===id) parents.father=null;
-  if(parents.mother&&parents.mother.id===id) parents.mother=null;
-  if(partner&&partner.id===id) partner=null;
-  siblings=siblings.filter(s=>s.id!==id);
-  children=children.filter(h=>h.id!==id);
+  const id = seleccionado.id;
+  if(patient && patient.id===id) { patient=null; formPaciente.style.display='block'; }
+  if(parents.father && parents.father.id===id) parents.father=null;
+  if(parents.mother && parents.mother.id===id) parents.mother=null;
+  if(partner && partner.id===id) partner=null;
+  siblings = siblings.filter(s=>s.id!==id);
+  children = children.filter(c=>c.id!==id);
   render();
 }
 
-/* redibujar al cambiar tamaño de ventana */
 window.addEventListener('resize', () => {
-  // destruir stage para forzar recreación con nuevo tamaño en el siguiente dibujar
-  if (stage) {
-    stage.destroy();
-    stage = null;
-    layer = null;
-  }
-  requestAnimationFrame(dibujarConexiones);
+  if (stage) { stage.destroy(); stage=null; layer=null; }
+  alinearGenograma();
+  requestAnimationFrame(() => dibujarConexiones());
 });
 
-function initFromParams() {
-  const params = new URLSearchParams(window.location.search);
-  
-  // Verificar si tenemos los parámetros mínimos
-  if (params.has('nombre')) {
-    const pNombre = params.get('nombre');
-    const pApellido = params.get('apellido') || '';
-    const pEdad = params.get('edad') || 0;
-    const pSexo = params.get('sexo') || 'M';
-
-    // Crear el objeto paciente directamente
-    patient = {
-      id: uid(),
-      nombre: pNombre,
-      apellido: pApellido,
-      edad: pEdad,
-      sexo: pSexo,
-      esPaciente: true
-    };
-
-    // Ocultar el formulario inicial porque ya tenemos paciente
-    if (formPaciente) {
-      formPaciente.style.display = 'none';
-    }
-  }
+const params = new URLSearchParams(window.location.search);
+if(params.has('nombre')){
+   patient = { id:uid(), nombre:params.get('nombre'), apellido:params.get('apellido')||'', edad:params.get('edad')||0, sexo:params.get('sexo')||'M', esPaciente:true };
+   formPaciente.style.display='none';
 }
 
-// Ejecutamos la función
-initFromParams();
-
-/* Render final */
 render();
 </script>
 </body>
