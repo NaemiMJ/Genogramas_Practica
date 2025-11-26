@@ -119,6 +119,38 @@ h1 {
 /* Asegurar que el contenido textual esté sobre el borde interior */
 .persona { background: #fff; z-index: 4; }
 
+/* Estilo para tachar a la persona fallecida (una X) */
+.persona.fallecido {
+  /* Asegura que la X se recorte en forma de círculo o cuadrado */
+  overflow: hidden;
+
+  /* Aquí está el truco:
+     En lugar de usar "black" o "#000", usamos "var(--c)".
+     Como las clases .hombre y .mujer ya definen qué color es --c,
+     la X tomará automáticamente ese color.
+  */
+  background: 
+    linear-gradient(to top right, transparent calc(50% - 2px), var(--c) calc(50% - 1px), var(--c) calc(50% + 1px), transparent calc(50% + 2px)),
+    linear-gradient(to bottom right, transparent calc(50% - 2px), var(--c) calc(50% - 1px), var(--c) calc(50% + 1px), transparent calc(50% + 2px)),
+    #fff; /* Fondo base blanco */
+
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* Corrección de lectura SOLO para fallecidos */
+.persona.fallecido .nombre, 
+.persona.fallecido .edad { /* Agregué edad también por si acaso */
+  background-color: rgba(255, 255, 255, 0.95); /* Fondo blanco casi sólido */
+  border-radius: 4px;
+  padding: 0 3px;          /* Un poquito de aire a los lados */
+  box-shadow: 0 0 2px #fff; /* Pequeño resplandor para suavizar bordes */
+  
+  /* Aseguramos que flote sobre la X */
+  position: relative; 
+  z-index: 5; 
+}
+
 /* menú contextual */
 .menu-acciones {
   position: absolute;
