@@ -81,10 +81,30 @@
           <option value="hijo">Hijo/a</option>
         </select>
       </label>
-      <label style="display:inline-flex; align-items:center; gap:5px; margin-top:5px;">
-        <input type="checkbox" id="famFallecido" /> Fallecido
+      <label>Salud / Problemas:
+        <select id="famSalud" style="width:100%">
+          <option value="ninguno">Ninguno</option>
+          <option value="abuso">Abuso Alcohol/Drogas</option>
+          <option value="ingreso">Ingreso / Recuperación</option> <option value="sospecha">Sospecha de Abuso</option>
+          <option value="mental">Prob. Mentales / Psicológicos</option>
+          <option value="ambos">Comorbilidad (Abuso + Mental)</option>
+        </select>
+      </label>
+      <label>Estado Vital:
+        <select id="famEstado" style="width:100%">
+          <option value="vivo">Vivo (Normal)</option>
+          <option value="fallecido">Fallecido (X Grande)</option>
+          <option value="embarazo">Embarazo (Triángulo)</option>
+          <option value="neonato_x">Muerte al nacer (Pequeño con X)</option>
+          <option value="aborto_esp">Aborto Espontáneo (Punto Negro)</option>
+          <option value="aborto_prov">Aborto Provocado (x pequeña)</option>
+        </select>
       </label>
       <label style="display:inline-flex; align-items:center; gap:5px; margin-top:5px;">
+        <input type="checkbox" id="famLgtb" /> 
+        LGTBIQ+
+      </label>
+      <label id="lblDivorcio" style="display:inline-flex; align-items:center; gap:5px; margin-top:5px;">
         <input type="checkbox" id="famDivorcio" /> Divorcio / Ex-Pareja
       </label>
 
@@ -133,36 +153,162 @@ const menuEliminarBtn = document.getElementById('menuEliminar');
 const formFamiliar = document.getElementById('formFamiliar');
 const guardarFamiliarBtn = document.getElementById('guardarFamiliarBtn');
 
+const famRolSelect = document.getElementById('famRol');
+const lblDivorcio = document.getElementById('lblDivorcio');
+const chkDivorcio = document.getElementById('famDivorcio');
+
+function toggleDivorcioOption() {
+  // Si el valor seleccionado es 'pareja', mostramos el label (usamos 'inline-flex' porque así estaba en tu estilo original)
+  if (famRolSelect.value === 'pareja') {
+    lblDivorcio.style.display = 'inline-flex';
+  } else {
+    // Si no es pareja, ocultamos y desmarcamos la casilla por seguridad
+    lblDivorcio.style.display = 'none';
+    chkDivorcio.checked = false;
+  }
+}
+
+// Ejecutar la función cada vez que cambie el select
+famRolSelect.addEventListener('change', toggleDivorcioOption);
+
+/* --- LÓGICA: FILTRAR ESTADOS SEGÚN ROL --- */
+const famEstadoSelect = document.getElementById('famEstado');
+
+function filtrarOpcionesEstado() {
+  const rol = famRolSelect.value;
+  
+  // Lista de estados que SOLO tienen sentido para descendencia (Hijos) o colaterales (Hermanos)
+  // 'embarazo', 'neonato_x', 'aborto_esp', 'aborto_prov'
+  const estadosProhibidosParaAdultos = ['embarazo', 'neonato_x', 'aborto_esp', 'aborto_prov'];
+  
+  // Recorremos todas las opciones del selector de Estado
+  for (let i = 0; i < famEstadoSelect.options.length; i++) {
+    const opt = famEstadoSelect.options[i];
+    
+    // Si la opción actual es una de las "infantiles/gestacionales"
+    if (estadosProhibidosParaAdultos.includes(opt.value)) {
+      
+      // Si el rol es PADRE o PAREJA -> Ocultamos
+      if (rol === 'padre' || rol === 'pareja') {
+        opt.hidden = true;      // Lo esconde visualmente
+        opt.disabled = true;    // Lo deshabilita por seguridad
+        opt.style.display = 'none'; // Refuerzo para algunos navegadores
+      } 
+      // Si el rol es HIJO o HERMANO -> Mostramos
+      else {
+        opt.hidden = false;
+        opt.disabled = false;
+        opt.style.display = 'block';
+      }
+    }
+  }
+
+  // REVISIÓN DE SEGURIDAD:
+  // Si el usuario tenía seleccionado "Embarazo" y cambia el rol a "Padre",
+  // el select se quedaría con un valor inválido. Lo reseteamos a "vivo".
+  const valorActual = famEstadoSelect.value;
+  if (estadosProhibidosParaAdultos.includes(valorActual) && (rol === 'padre' || rol === 'pareja')) {
+    famEstadoSelect.value = 'vivo';
+  }
+}
+
+/* --- A. LÓGICA DE BLOQUEO (Sin drogas/LGTB para fetos) --- */
+function actualizarCamposPorEstado() {
+  const estado = famEstadoSelect.value;
+  const saludSelect = document.getElementById('famSalud');
+  const lgtbCheck = document.getElementById('famLgtb');
+  
+  // Si es embarazo, neonato o aborto -> No aplica salud ni lgtb
+  const estadosInfantiles = ['embarazo', 'neonato_x', 'aborto_esp', 'aborto_prov'];
+  
+  if (estadosInfantiles.includes(estado)) {
+    // 1. Reseteamos valores
+    saludSelect.value = 'ninguno';
+    lgtbCheck.checked = false;
+    
+    // 2. Deshabilitamos y bajamos opacidad visual
+    saludSelect.disabled = true;
+    lgtbCheck.disabled = true;
+    saludSelect.parentElement.style.opacity = '0.5';
+    lgtbCheck.parentElement.style.opacity = '0.5';
+  } else {
+    // Reactivamos para vivos o fallecidos adultos
+    saludSelect.disabled = false;
+    lgtbCheck.disabled = false;
+    saludSelect.parentElement.style.opacity = '1';
+    lgtbCheck.parentElement.style.opacity = '1';
+  }
+}
+// Activar el bloqueo al cambiar estado
+famEstadoSelect.addEventListener('change', actualizarCamposPorEstado);
+
+// Ejecutar el filtro cada vez que cambiamos el ROL
+famRolSelect.addEventListener('change', filtrarOpcionesEstado);
+
 /* ========== Utilidades ========== */
 const getNum = v => { const n = parseInt(v); return Number.isFinite(n) ? n : null; };
 function getCenterX(el) { const r = el.getBoundingClientRect(); return r.left + r.width / 2; }
 
-/* ========== Crear nodo persona ========== */
+/* ========== Crear nodo persona (CORREGIDO) ========== */
 function crearNodo(persona) {
   const div = document.createElement('div');
+  
+  // 1. Asignación de Clases
   let clases = 'persona ' + (persona.sexo === 'M' ? 'hombre' : 'mujer');
+  
   if (persona.esPaciente) clases += ' paciente';
-  if (persona.fallecido) clases += ' fallecido';
+  
+  // Estados Vitales
+  if (persona.estado === 'fallecido') clases += ' fallecido';
+  else if (persona.estado === 'embarazo') clases += ' embarazo';
+  else if (persona.estado === 'neonato_x') clases += ' neonato-x';
+  else if (persona.estado === 'aborto_esp') clases += ' aborto-esp';
+  else if (persona.estado === 'aborto_prov') clases += ' aborto-prov';
+
+  // Salud
+  if (persona.salud && persona.salud !== 'ninguno') {
+    clases += ' patron-' + persona.salud; 
+  }
+
+  // LGTB
+  if (persona.lgtb) clases += ' lgtb'; 
   
   div.className = clases;
   div.dataset.id = persona.id;
 
-  const nombre = document.createElement('div');
-  nombre.className = 'nombre';
-  nombre.textContent = persona.nombre + (persona.apellido ? (' ' + persona.apellido) : '');
+  // 2. Elemento Triángulo LGTB (Si corresponde)
+  if (persona.lgtb) {
+    const tri = document.createElement('div');
+    tri.className = 'simbolo-lgtb';
+    div.appendChild(tri);
+  }
 
-  const edad = document.createElement('div');
-  edad.className = 'edad';
-  edad.textContent = persona.edad ? (persona.edad + ' años') : '';
+  // 3. Texto: Nombre y Edad
+  // Aquí está el filtro: SOLO ocultamos en abortos.
+  const sinTexto = ['aborto_esp', 'aborto_prov']; 
+  
+  if (!sinTexto.includes(persona.estado)) {
+    const nombre = document.createElement('div');
+    nombre.className = 'nombre';
+    nombre.textContent = persona.nombre + (persona.apellido ? (' ' + persona.apellido) : '');
 
-  div.appendChild(nombre);
-  div.appendChild(edad);
+    const edad = document.createElement('div');
+    edad.className = 'edad';
+    edad.textContent = persona.edad ? (persona.edad + ' años') : '';
+
+    div.appendChild(nombre);
+    div.appendChild(edad);
+  }
+  
+  // --- AQUÍ ESTABA EL ERROR: HABÍA OTRO BLOQUE IGUAL QUE AÑADÍA EL NOMBRE OTRA VEZ ---
+  // (Ya lo he borrado en esta versión)
 
   div.addEventListener('click', (e) => {
     e.stopPropagation();
     seleccionado = persona;
     abrirMenu(e.pageX, e.pageY);
   });
+  
   return div;
 }
 
@@ -439,28 +585,46 @@ function abrirMenu(x,y){ menu.style.left=x+'px'; menu.style.top=y+'px'; menu.cla
 function cerrarMenu(){ menu.classList.add('oculto'); seleccionado=null; }
 menuAgregarBtn.onclick = ()=>{ cerrarMenu(); abrirFormFamiliar(); };
 menuEliminarBtn.onclick = ()=>{ if(seleccionado) eliminarSeleccionado(); cerrarMenu(); };
-function abrirFormFamiliar(){ formFamiliar.classList.remove('oculto'); }
+/* --- B. INICIALIZACIÓN --- */
+function abrirFormFamiliar(){ 
+  formFamiliar.classList.remove('oculto'); 
+  toggleDivorcioOption(); 
+  filtrarOpcionesEstado();   // Ocultar embarazo si es "Padre"
+  actualizarCamposPorEstado(); // Bloquear salud/lgtb si ya estaba marcado un aborto
+}
 function cerrarFormFamiliar(){ formFamiliar.classList.add('oculto'); }
 
+/* --- C. BOTÓN GUARDAR (Validación de Nombre relajada) --- */
 guardarFamiliarBtn.onclick = ()=>{
   const nomInput = document.getElementById('famNombre');
   const apeInput = document.getElementById('famApellido');
   const edadInput = document.getElementById('famEdad');
   const sexoInput = document.getElementById('famSexo');
   const rolInput = document.getElementById('famRol');
-  const fallecidoInput = document.getElementById('famFallecido'); 
+  const estadoInput = document.getElementById('famEstado');
+  const saludInput = document.getElementById('famSalud');
+  const lgtbInput = document.getElementById('famLgtb');
   const divorcioInput = document.getElementById('famDivorcio'); 
-
+  const estado = estadoInput.value;
   const nom = nomInput.value.trim();
-  if(!nom) return alert("Por favor ingresa un nombre");
+
+  // --- CAMBIO AQUÍ: Permitir sin nombre si es pérdida o embarazo ---
+  const permiteSinNombre = ['embarazo', 'aborto_esp', 'aborto_prov'].includes(estado);
+  
+  if(!nom && !permiteSinNombre) {
+    return alert("Por favor ingresa un nombre");
+  }
 
   const p = { 
     id: uid(), 
-    nombre: nom, 
+    // Si no pone nombre, guardamos cadena vacía para que no salga "undefined"
+    nombre: nom || '', 
     apellido: apeInput.value, 
     edad: edadInput.value, 
     sexo: sexoInput.value,
-    fallecido: fallecidoInput.checked,
+    estado: estado, 
+    salud: saludInput.value,
+    lgtb: lgtbInput.checked,
     divorciado: divorcioInput.checked 
   };
 
@@ -470,9 +634,11 @@ guardarFamiliarBtn.onclick = ()=>{
   else if(rol==='hermano') siblings.push(p);
   else if(rol==='hijo') children.push(p);
   
+  // RESET
   nomInput.value = ''; apeInput.value = ''; edadInput.value = '';
-  fallecidoInput.checked = false; divorcioInput.checked = false;
-  sexoInput.value = 'M'; rolInput.value = 'padre';
+  estadoInput.value = 'vivo'; saludInput.value = 'ninguno';
+  lgtbInput.checked = false; divorcioInput.checked = false;
+  sexoInput.value = 'M'; rolInput.value = 'hijo';
 
   cerrarFormFamiliar(); 
   render();

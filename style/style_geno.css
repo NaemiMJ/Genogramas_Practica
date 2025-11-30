@@ -89,14 +89,33 @@ h1 {
   border-radius: 50%;
 }
 
-/* Texto encima del pseudo-elemento interior */
+/* --- TEXTO GLOBAL (Siempre legible) --- */
+
 .persona .nombre, .persona .edad {
   position: relative;
-  z-index: 3;
-  text-align:center;
+  z-index: 10; /* Siempre encima de iconos, X o patrones */
+  text-align: center;
+  
+  /* FONDO "GLOBAL": Se aplica a todos (fallecidos, lgtb, sanos...) */
+  background-color: rgba(255, 255, 255, 0.85); /* Blanco al 85% */
+  padding: 1px 4px;       /* Un poco de aire alrededor del texto */
+  border-radius: 4px;     /* Bordes redondeados */
+  
+  /* Sombra suave para separar el texto blanco del fondo blanco si coinciden */
+  box-shadow: 0 0 3px rgba(0,0,0,0.1); 
 }
-.persona .nombre { font-weight: 700; font-size: 13px; line-height: 1.1; }
-.persona .edad { font-size: 12px; color:#555; margin-top:4px; }
+
+.persona .nombre { 
+  font-weight: 700; 
+  font-size: 13px; 
+  line-height: 1.1; 
+}
+
+.persona .edad { 
+  font-size: 12px; 
+  color: #333; 
+  margin-top: 2px; /* Un poco más pegado al nombre */
+}
 
 /* Figura interior que marca "paciente" (doble contorno) */
 .persona.paciente::after{
@@ -119,37 +138,199 @@ h1 {
 /* Asegurar que el contenido textual esté sobre el borde interior */
 .persona { background: #fff; z-index: 4; }
 
-/* Estilo para tachar a la persona fallecida (una X) */
-.persona.fallecido {
-  /* Asegura que la X se recorte en forma de círculo o cuadrado */
-  overflow: hidden;
+/* --- ESTILO FALLECIDO (La X) --- */
 
-  /* Aquí está el truco:
-     En lugar de usar "black" o "#000", usamos "var(--c)".
-     Como las clases .hombre y .mujer ya definen qué color es --c,
-     la X tomará automáticamente ese color.
-  */
+/* 1. Quitamos el fondo del elemento principal para que NO borre los patrones de salud */
+.persona.fallecido {
+  /* overflow: hidden; <--- Lo quitamos para que no corte bordes si usamos sombras */
+}
+
+/* 2. Dibujamos la X en una capa virtual (::before) que flota ENCIMA del fondo negro */
+.persona.fallecido::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit; /* Hereda si es círculo o cuadrado */
+  pointer-events: none;
+  z-index: 5; /* Capa intermedia: Encima del fondo, debajo del texto/LGTB */
+
+  /* Dibujo de la X usando gradientes, igual que antes pero en esta capa */
   background: 
     linear-gradient(to top right, transparent calc(50% - 2px), var(--c) calc(50% - 1px), var(--c) calc(50% + 1px), transparent calc(50% + 2px)),
-    linear-gradient(to bottom right, transparent calc(50% - 2px), var(--c) calc(50% - 1px), var(--c) calc(50% + 1px), transparent calc(50% + 2px)),
-    #fff; /* Fondo base blanco */
-
+    linear-gradient(to bottom right, transparent calc(50% - 2px), var(--c) calc(50% - 1px), var(--c) calc(50% + 1px), transparent calc(50% + 2px));
+  
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
 
-/* Corrección de lectura SOLO para fallecidos */
+/* CORRECCIÓN DE LECTURA (Solo aseguramos que el texto esté encima de la X) */
 .persona.fallecido .nombre, 
-.persona.fallecido .edad { /* Agregué edad también por si acaso */
-  background-color: rgba(255, 255, 255, 0.95); /* Fondo blanco casi sólido */
-  border-radius: 4px;
-  padding: 0 3px;          /* Un poquito de aire a los lados */
-  box-shadow: 0 0 2px #fff; /* Pequeño resplandor para suavizar bordes */
-  
-  /* Aseguramos que flote sobre la X */
+.persona.fallecido .edad {
   position: relative; 
-  z-index: 5; 
+  z-index: 10; /* Texto siempre arriba de todo */
 }
+
+/* --- PATRONES DE ABUSO Y SALUD MENTAL --- */
+
+/* 1. Abuso de Alcohol/Drogas: Mitad inferior negra */
+.persona.patron-abuso {
+  background: linear-gradient(to bottom, #fff 50%, #000 50%);
+}
+
+/* 2. Sospechoso de Abuso: Mitad inferior rayada */
+.persona.patron-sospecha {
+  background: 
+    linear-gradient(to bottom, #fff 50%, transparent 50%),
+    repeating-linear-gradient(
+      -45deg, 
+      #000, 
+      #000 2px, 
+      transparent 2px, 
+      transparent 6px
+    );
+}
+
+/* 3. Problemas Mentales: Mitad izquierda negra */
+.persona.patron-mental {
+  background: linear-gradient(to right, #000 50%, #fff 50%);
+}
+
+/* 4. Abuso + Mental (Comorbilidad): 3/4 Negro */
+.persona.patron-ambos {
+  background: 
+    linear-gradient(to right, #000 50%, transparent 50%),
+    linear-gradient(to bottom, transparent 50%, #000 50%),
+    #fff;
+}
+
+/* 5. NUEVO: Ingreso / Recuperación (Cuadrante inferior izquierdo negro) */
+.persona.patron-ingreso {
+  background: 
+    /* Capa 1: La mitad de ARRIBA es toda blanca (tapa todo) */
+    linear-gradient(to bottom, #fff 50%, transparent 50%),
+    
+    /* Capa 2: La mitad de ABAJO se divide: Izquierda Negra, Derecha Blanca */
+    linear-gradient(to right, #000 50%, #fff 50%);
+}
+
+/* --- SÍMBOLO LGTBIQ+ (Triángulo Invertido GRANDE) --- */
+
+.persona.lgtb .simbolo-lgtb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  
+  /* CORRECCIÓN AQUÍ: */
+  /* Antes era 1. Lo subimos a 6 para que tape a la X de fallecido (que es 5) */
+  z-index: 6; 
+  
+  /* 1. Borde Exterior */
+  width: 0; 
+  height: 0;
+  border-left: 28px solid transparent;  
+  border-right: 28px solid transparent; 
+  border-top: 45px solid var(--c);      
+}
+
+/* 2. Máscara Interior (Blanco) */
+.persona.lgtb .simbolo-lgtb::after {
+  content: "";
+  position: absolute;
+  top: -41px;   
+  left: -22px;  
+  width: 0; 
+  height: 0; 
+  border-left: 22px solid transparent; 
+  border-right: 22px solid transparent; 
+  /* Este fondo blanco es el que "borrará" la X que quede detrás */
+  border-top: 35px solid #fff;          
+}
+
+/* --- SÍMBOLOS DE PÉRDIDA Y EMBARAZO (AJUSTADOS) --- */
+
+/* --- EMBARAZO (Ajustado: Más arriba y cerrado abajo) --- */
+.persona.embarazo {
+  width: 44px; 
+  height: 40px;
+  background: transparent;
+  border: none; 
+  border-radius: 0;
+  position: relative;
+}
+
+/* Triángulo de COLOR (Exterior) */
+.persona.embarazo::after {
+  content: ""; 
+  position: absolute; 
+  
+  /* 1. LO SUBIMOS: De 50% a 40% */
+  top: 40%; 
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  
+  width: 0; height: 0;
+  border-left: 22px solid transparent; 
+  border-right: 22px solid transparent; 
+  border-bottom: 40px solid var(--c); 
+}
+
+/* Triángulo BLANCO (Interior) */
+.persona.embarazo::before {
+  content: ""; 
+  position: absolute; 
+  
+  /* 2. LO CERRAMOS: Ajuste matemático preciso */
+  /* Lo ponemos 4px más abajo que el pico del triángulo de color */
+  /* Si el de color está en 40%, este empieza un pelín más abajo */
+  top: calc(40% - 16px); /* Ajuste visual manual respecto al centro */
+  /* O más fácil: usamos el mismo transform pero ajustamos top relativo */
+  
+  /* MEJOR MÉTODO DE POSICIONAMIENTO PARA "CERRARLO": */
+  top: 40%; /* Mismo centro base */
+  left: 50%;
+  
+  /* Lo movemos: 
+     -50% en X (centrado)
+     -42% en Y (Un poco menos que -50% para que baje y deje ver la punta de arriba)
+  */
+  transform: translate(-50%, -42%);
+  z-index: 2;
+  
+  width: 0; height: 0;
+  border-left: 17px solid transparent; 
+  border-right: 17px solid transparent; 
+  /* Altura reducida a 32px (40 - 32 = 8px de margen vertical total repartido) */
+  border-bottom: 32px solid #fff;
+}
+
+/* --- NEONATO MUERTO (Color corregido) --- */
+.persona.neonato-x {
+  width: 40px; 
+  height: 40px;
+  border: 2px solid var(--c); /* Borde de color */
+  display: flex; align-items: center; justify-content: center;
+  background: #fff;
+  overflow: hidden;
+}
+
+/* La X interna AHORA USA EL COLOR DEL GÉNERO (var(--c)) */
+.persona.neonato-x::before {
+  content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  
+  /* CAMBIO: Reemplazado #000 por var(--c) */
+  background: 
+    linear-gradient(to top right, transparent calc(50% - 1px), var(--c) calc(50% - 0.5px), var(--c) calc(50% + 0.5px), transparent calc(50% + 1px)),
+    linear-gradient(to bottom right, transparent calc(50% - 1px), var(--c) calc(50% - 0.5px), var(--c) calc(50% + 0.5px), transparent calc(50% + 1px));
+}
+
+/* Asegurar herencia de forma */
+.persona.neonato-x.mujer { border-radius: 50%; }
+.persona.neonato-x.hombre { border-radius: 0; }
 
 /* menú contextual */
 .menu-acciones {
