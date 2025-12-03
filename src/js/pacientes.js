@@ -171,30 +171,95 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     // 3. BÚSQUEDA INTELIGENTE
     // ==========================================
-    if (searchForm) {
-        const filtrarPacientes = () => {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            if (searchTerm === '') {
-                renderListaPacientes(todosLosPacientes);
-                return;
+   if (searchForm) {
+        const noResultsMessage = document.getElementById('no-results-message');
+
+        const toggleClearButton = (show) => {
+            if (show) {
+                searchClearBtn.classList.remove('d-none');
+            } else {
+                searchClearBtn.classList.add('d-none');
             }
-            // Limpia puntos y guiones para comparar RUTs
-            const searchTermLimpio = searchTerm.replace(/[^0-9kK]/g, '');
-
-            const pacientesFiltrados = todosLosPacientes.filter(paciente => {
-                const p = paciente.persona;
-                if (!p) return false;
-                
-                const nombreCompleto = `${p.nombres} ${p.apellido_pa} ${p.apellido_mat || ''}`.toLowerCase();
-                const rutLimpio = (p.rut || '').replace(/[^0-9kK]/g, '').toLowerCase();
-
-                return nombreCompleto.includes(searchTerm) || rutLimpio.includes(searchTermLimpio);
-            });
-            renderListaPacientes(pacientesFiltrados);
         };
 
-        searchForm.addEventListener('submit', (e) => { e.preventDefault(); filtrarPacientes(); });
-        searchClearBtn.addEventListener('click', () => { searchInput.value = ''; renderListaPacientes(todosLosPacientes); });
+        const filtrarPacientes = () => {
+        const terminoInput = searchInput.value.toLowerCase().trim();
+        
+        // 1. Manejo del botón 'X' de limpiar
+        if (terminoInput.length > 0) {
+            searchClearBtn.classList.remove('d-none');
+        } else {
+            searchClearBtn.classList.add('d-none');
+        }
+
+        // 2. Si no hay nada escrito, mostrar todos
+        if (terminoInput === '') {
+            renderListaPacientes(todosLosPacientes);
+            if (document.getElementById('no-results-message')) {
+                document.getElementById('no-results-message').classList.add('d-none');
+            }
+            return;
+        }
+
+        // 3. Preparar términos de búsqueda
+        // A) Término limpio para RUT (solo números y k)
+        const terminoRut = terminoInput.replace(/[^0-9kK]/g, ''); 
+        
+        const pacientesFiltrados = todosLosPacientes.filter(paciente => {
+            const p = paciente.persona;
+            if (!p) return false;
+
+            // --- BÚSQUEDA POR NOMBRE Y APELLIDO ---
+            // Creamos una sola cadena con todo: "Juan Andres Perez Gonzalez"
+            const nombreCompleto = `${p.nombres || ''} ${p.apellido_pa || ''} ${p.apellido_mat || ''}`.toLowerCase();
+            
+            // Verificamos si lo que escribiste está contenido en esa cadena
+            const coincideNombre = nombreCompleto.includes(terminoInput);
+
+            // --- BÚSQUEDA POR RUT ---
+            let coincideRut = false;
+            if (p.rut) {
+                const rutPacienteLimpio = p.rut.replace(/[^0-9kK]/g, '').toLowerCase();
+                
+                // Solo buscamos por RUT si el usuario escribió algún número o 'k'
+                if (terminoRut.length > 0) {
+                    coincideRut = rutPacienteLimpio.includes(terminoRut);
+                }
+                // También permitimos buscar por el formato exacto (ej: 12.345)
+                if (p.rut.toLowerCase().includes(terminoInput)) {
+                    coincideRut = true;
+                }
+            }
+
+            // Si coincide el nombre O coincide el RUT, devuelve verdadero
+            return coincideNombre || coincideRut;
+        });
+
+        // 4. Renderizar resultados
+        renderListaPacientes(pacientesFiltrados);
+
+        // 5. Mostrar mensaje si no hay resultados
+        const noResultsMessage = document.getElementById('no-results-message');
+        if (noResultsMessage) {
+            if (pacientesFiltrados.length === 0) {
+                noResultsMessage.classList.remove('d-none');
+            } else {
+                noResultsMessage.classList.add('d-none');
+            }
+        }
+    };
+        // Event Listeners
+        searchForm.addEventListener('submit', (e) => { 
+            e.preventDefault(); 
+            filtrarPacientes(); 
+        });
+
+        searchClearBtn.addEventListener('click', () => { 
+            searchInput.value = ''; 
+            filtrarPacientes(); 
+            searchInput.focus(); // Devolver el foco al input
+        });
+
         searchInput.addEventListener('input', filtrarPacientes);
     }
 

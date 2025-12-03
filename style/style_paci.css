@@ -5,6 +5,27 @@
     --bg-card: #f8f9fa;
 
 }
+
+/* Input limpio sin bordes */
+#search-input {
+    background: transparent;
+    font-weight: 400;
+    color: #333;
+}
+
+#search-input::placeholder {
+    color: #aaa;
+    font-weight: 300;
+}
+
+/* Botón de limpiar */
+#search-clear-btn {
+    transition: color 0.2s;
+}
+
+#search-clear-btn:hover {
+    color: #dc3545 !important; /* Rojo al pasar el mouse */
+}
 #add-patient-card-container{
     margin: 3rem;
     margin-top: 3rem;
@@ -55,3 +76,16 @@
 .patient-avatar {
   font-size: 3rem; 
 }
+
+.search-card {
+    transition: box-shadow 0.3s ease, transform 0.2s ease;
+    border: 1px solid #f0f0f0;
+}
+
+/* Efecto al pasar el mouse o hacer foco */
+.search-card:focus-within {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+    border-color: #dee2e6;
+    transform: translateY(-2px);
+}
+

@@ -40,22 +40,45 @@
     </aside>
 
     <main class="main-content">
+      <h2>Gestión de paciente</h2>
       <button class="btn d-lg-none mb-3" id="sidebar-toggle"><i class="bi bi-list"></i></button>
       <header class="nombre_paciente"></header>
+      <div class="mb-4">
+  <div class="row justify-content-start">
+    <div class="col-12 col-md-10 col-lg-8">
+      
+      <div class="search-card p-3 shadow-sm rounded-4 bg-white">
+        <form id="search-user-form" class="position-relative d-flex align-items-center">
+          
+          <i class="bi bi-search text-secondary fs-5 ms-2 me-3"></i>
+          
+          <input type="text" 
+                 class="form-control border-0 shadow-none fs-5" 
+                 id="search-input" 
+                 placeholder="Buscar por nombre, apellido o RUT..." 
+                 autocomplete="off">
+          
+          <button type="button" 
+                  id="search-clear-btn" 
+                  class="btn btn-link text-secondary text-decoration-none p-0 ms-2 d-none" 
+                  title="Limpiar búsqueda">
+            <i class="bi bi-x-circle-fill fs-4"></i>
+          </button>
 
-      <div class="top-controls-wrapper container d-flex flex-wrap justify-content-evenly">
-        <form class="search-form col-9" id="search-user-form">
-            <div class="input-group">
-              <input type="text" class="form-control" id="search-input" placeholder="Buscar por nombre, apellido o RUT...">
-              <button class="btn btn-outline-secondary" type="submit" id="search-submit-btn">
-                <i class="bi bi-search"></i>
-              </button>
-              <button class="btn btn-outline-secondary" type="button" id="search-clear-btn" title="Limpiar búsqueda">
-                <i class="bi bi-x-lg"></i>
-              </button> 
-            </div>
         </form>
-      </div> 
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="no-results-message" class="text-center mt-5 d-none">
+    <div class="mb-3">
+        <i class="bi bi-emoji-frown text-muted" style="font-size: 4rem;"></i>
+    </div>
+    <h4 class="text-muted">No se encontraron pacientes</h4>
+    <p class="text-secondary">Intenta con otro nombre o verifica el RUT.</p>
+</div>
 
       <!-- Modal para Crear Paciente (no cambia) -->
       <div class="modal fade" id="createPacienteModal" tabindex="-1" aria-labelledby="createPacienteModalLabel" aria-hidden="true">
