@@ -5,16 +5,6 @@
   <title>Genograma</title>
   <link rel="stylesheet" href="../style/style_geno.css">
   <script src="https://unpkg.com/konva@9/konva.min.js"></script>
-  <style>
-    /* Estilos base */
-    .middle-row { display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 40px; /* Espacio extra para la línea U */ }
-    .pareja-slot { width: 140px; display:flex; justify-content:center; }
-    .center-block { display:flex; align-items:center; justify-content:center; gap:12px; }
-    .hermanos { display:flex; gap:12px; align-items:center; }
-    .paciente-slot { min-width:120px; display:flex; justify-content:center; }
-    #conexiones { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; }
-    .genograma-container { position:relative; padding-bottom: 50px; }
-  </style>
 </head>
 <body>
   <h1>Genograma</h1>
@@ -81,6 +71,18 @@
           <option value="hijo">Hijo/a</option>
         </select>
       </label>
+      
+      <div id="divTipoHijo" style="display:none; margin-top:8px;">
+        <label>Tipo de Hijo:
+          <select id="famTipoHijo" style="width:100%">
+            <option value="biologico">Biológico (Normal)</option>
+            <option value="adoptado">Adoptado (Línea Punteada)</option>
+            <option value="mellizo">Mellizo (Dizigótico)</option>
+            <option value="gemelo">Gemelo (Monocigótico/Idéntico)</option>
+          </select>
+        </label>
+      </div>
+
       <label>Salud / Problemas:
         <select id="famSalud" style="width:100%">
           <option value="ninguno">Ninguno</option>
@@ -92,21 +94,40 @@
       </label>
       <label>Estado Vital:
         <select id="famEstado" style="width:100%">
-          <option value="vivo">Vivo (Normal)</option>
-          <option value="fallecido">Fallecido (X Grande)</option>
-          <option value="embarazo">Embarazo (Triángulo)</option>
-          <option value="neonato_x">Muerte al nacer (Pequeño con X)</option>
-          <option value="aborto_esp">Aborto Espontáneo (Punto Negro)</option>
-          <option value="aborto_prov">Aborto Provocado (x pequeña)</option>
+          <option value="vivo">Vivo</option>
+          <option value="fallecido">Fallecido</option>
+          <option value="embarazo">Embarazo</option>
+          <option value="neonato_x">Muerte al nacer</option>
+          <option value="aborto_esp">Aborto Espontáneo</option>
+          <option value="aborto_prov">Aborto Provocado</option>
         </select>
       </label>
       <label style="display:inline-flex; align-items:center; gap:5px; margin-top:5px;">
         <input type="checkbox" id="famLgtb" /> 
         LGTBIQ+
       </label>
-      <label id="lblDivorcio" style="display:inline-flex; align-items:center; gap:5px; margin-top:5px;">
-        <input type="checkbox" id="famDivorcio" /> Divorcio / Ex-Pareja
-      </label>
+      <div id="lblDivorcio" style="display:none; margin-top:8px;">
+        <label>Estado de la Relación:
+          <select id="famTipoRelacion" style="width:100%">
+            <option value="normal">Relación Vigente (Matrimonio)</option>
+            <option value="de_hecho">Pareja de hecho / Amante</option>
+            <option value="separacion">Separación</option>
+            <option value="divorcio">Divorcio</option>
+            <option value="reconciliacion">Reconciliación tras Divorcio</option> </select>
+        </label>
+      </div>
+      <div id="bloqueFechasRelacion" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:4px;">
+        <label style="font-weight:bold;">Cronología de la Relación:</label>
+        <div style="display:flex; gap:10px; margin-top:5px;">
+          <label style="flex:1;">Año Inicio: 
+            <input type="number" id="relAnioInicio" placeholder="Ej: 1990" min="1900" max="2030" style="width:100%">
+          </label>
+          <label style="flex:1;">Año Fin (si aplica): 
+            <input type="number" id="relAnioFin" placeholder="Ej: 2005" min="1900" max="2030" style="width:100%">
+          </label>
+        </div>
+        <small style="color:#666;">Necesario para ordenar relaciones múltiples.</small>
+      </div>
 
       <div class="modal-actions" style="margin-top:8px;">
         <button id="guardarFamiliarBtn">Agregar</button>
@@ -127,7 +148,7 @@ function uid(){ return Date.now().toString(36) + Math.random().toString(36).slic
 
 let patient = null;
 let parents = { father: null, mother: null };
-let partner = null;
+let partners = []; // Ahora es una lista vacía
 let siblings = [];
 let children = [];
 let seleccionado = null;
@@ -154,61 +175,87 @@ const formFamiliar = document.getElementById('formFamiliar');
 const guardarFamiliarBtn = document.getElementById('guardarFamiliarBtn');
 
 const famRolSelect = document.getElementById('famRol');
-const lblDivorcio = document.getElementById('lblDivorcio');
-const chkDivorcio = document.getElementById('famDivorcio');
+
+/* --- MODIFICAR: Función para mostrar/ocultar opciones de PAREJA --- */
+const divRelacion = document.getElementById('lblDivorcio');
+const tipoRelacionInput = document.getElementById('famTipoRelacion');
+// NUEVO SELECTOR:
+const bloqueFechasRelacion = document.getElementById('bloqueFechasRelacion');
 
 function toggleDivorcioOption() {
-  // Si el valor seleccionado es 'pareja', mostramos el label (usamos 'inline-flex' porque así estaba en tu estilo original)
-  if (famRolSelect.value === 'pareja') {
-    lblDivorcio.style.display = 'inline-flex';
+  const esPareja = (famRolSelect.value === 'pareja');
+
+  if (esPareja) {
+    divRelacion.style.display = 'block';
+    // NUEVO: Mostrar fechas
+    bloqueFechasRelacion.style.display = 'block';
   } else {
-    // Si no es pareja, ocultamos y desmarcamos la casilla por seguridad
-    lblDivorcio.style.display = 'none';
-    chkDivorcio.checked = false;
+    divRelacion.style.display = 'none';
+    // NUEVO: Ocultar fechas y resetear
+    bloqueFechasRelacion.style.display = 'none';
+    tipoRelacionInput.value = 'normal';
+    document.getElementById('relAnioInicio').value = '';
+    document.getElementById('relAnioFin').value = '';
   }
 }
 
-// Ejecutar la función cada vez que cambie el select
-famRolSelect.addEventListener('change', toggleDivorcioOption);
+// NUEVO: Listener unificado para cambios de ROL (Pareja y Tipo de Hijo)
+famRolSelect.addEventListener('change', () => {
+  // 1. Lógica de Pareja
+  toggleDivorcioOption();
+  
+  // 2. Lógica de Estados (abortos, etc)
+  filtrarOpcionesEstado();
 
+  // 3. NUEVO: Lógica para mostrar "Tipo de Hijo"
+  const divTipoHijo = document.getElementById('divTipoHijo');
+  const tipoHijoInput = document.getElementById('famTipoHijo');
+  
+  if (famRolSelect.value === 'hijo') {
+    divTipoHijo.style.display = 'block';
+  } else {
+    divTipoHijo.style.display = 'none';
+    tipoHijoInput.value = 'biologico'; // Reset por seguridad
+  }
+});
+
+
+/* --- LÓGICA: FILTRAR ESTADOS SEGÚN ROL --- */
 /* --- LÓGICA: FILTRAR ESTADOS SEGÚN ROL --- */
 const famEstadoSelect = document.getElementById('famEstado');
 
 function filtrarOpcionesEstado() {
   const rol = famRolSelect.value;
+  // Estados que queremos que sean exclusivos para el rol 'hijo'
+  const estadosInfantiles = ['embarazo', 'neonato_x', 'aborto_esp', 'aborto_prov'];
   
-  // Lista de estados que SOLO tienen sentido para descendencia (Hijos) o colaterales (Hermanos)
-  // 'embarazo', 'neonato_x', 'aborto_esp', 'aborto_prov'
-  const estadosProhibidosParaAdultos = ['embarazo', 'neonato_x', 'aborto_esp', 'aborto_prov'];
-  
-  // Recorremos todas las opciones del selector de Estado
   for (let i = 0; i < famEstadoSelect.options.length; i++) {
     const opt = famEstadoSelect.options[i];
     
-    // Si la opción actual es una de las "infantiles/gestacionales"
-    if (estadosProhibidosParaAdultos.includes(opt.value)) {
-      
-      // Si el rol es PADRE o PAREJA -> Ocultamos
-      if (rol === 'padre' || rol === 'pareja') {
-        opt.hidden = true;      // Lo esconde visualmente
-        opt.disabled = true;    // Lo deshabilita por seguridad
-        opt.style.display = 'none'; // Refuerzo para algunos navegadores
-      } 
-      // Si el rol es HIJO o HERMANO -> Mostramos
-      else {
-        opt.hidden = false;
-        opt.disabled = false;
+    // Si la opción actual es una de las "infantiles"
+    if (estadosInfantiles.includes(opt.value)) {
+      // SOLO mostramos si el rol es exactamente 'hijo'
+      if (rol === 'hijo') {
+        opt.hidden = false; 
+        opt.disabled = false; 
         opt.style.display = 'block';
+      } else {
+        // Para cualquier otro rol (padre, pareja, hermano), se oculta
+        opt.hidden = true; 
+        opt.disabled = true; 
+        opt.style.display = 'none';
       }
     }
   }
 
-  // REVISIÓN DE SEGURIDAD:
-  // Si el usuario tenía seleccionado "Embarazo" y cambia el rol a "Padre",
-  // el select se quedaría con un valor inválido. Lo reseteamos a "vivo".
+  // Validación de seguridad:
+  // Si el usuario tenía seleccionado "aborto" y cambia el rol a "Padre",
+  // el valor quedaría inválido. Forzamos el cambio a "vivo".
   const valorActual = famEstadoSelect.value;
-  if (estadosProhibidosParaAdultos.includes(valorActual) && (rol === 'padre' || rol === 'pareja')) {
+  if (estadosInfantiles.includes(valorActual) && rol !== 'hijo') {
     famEstadoSelect.value = 'vivo';
+    // Llamamos a actualizarCampos para que habilite de nuevo drogas/lgtb si estaban bloqueados
+    actualizarCamposPorEstado();
   }
 }
 
@@ -217,76 +264,73 @@ function actualizarCamposPorEstado() {
   const estado = famEstadoSelect.value;
   const saludSelect = document.getElementById('famSalud');
   const lgtbCheck = document.getElementById('famLgtb');
-  
-  // Si es embarazo, neonato o aborto -> No aplica salud ni lgtb
   const estadosInfantiles = ['embarazo', 'neonato_x', 'aborto_esp', 'aborto_prov'];
   
   if (estadosInfantiles.includes(estado)) {
-    // 1. Reseteamos valores
     saludSelect.value = 'ninguno';
     lgtbCheck.checked = false;
-    
-    // 2. Deshabilitamos y bajamos opacidad visual
     saludSelect.disabled = true;
     lgtbCheck.disabled = true;
     saludSelect.parentElement.style.opacity = '0.5';
     lgtbCheck.parentElement.style.opacity = '0.5';
   } else {
-    // Reactivamos para vivos o fallecidos adultos
     saludSelect.disabled = false;
     lgtbCheck.disabled = false;
     saludSelect.parentElement.style.opacity = '1';
     lgtbCheck.parentElement.style.opacity = '1';
   }
 }
-// Activar el bloqueo al cambiar estado
-famEstadoSelect.addEventListener('change', actualizarCamposPorEstado);
 
-// Ejecutar el filtro cada vez que cambiamos el ROL
-famRolSelect.addEventListener('change', filtrarOpcionesEstado);
+famEstadoSelect.addEventListener('change', actualizarCamposPorEstado);
 
 /* ========== Utilidades ========== */
 const getNum = v => { const n = parseInt(v); return Number.isFinite(n) ? n : null; };
 function getCenterX(el) { const r = el.getBoundingClientRect(); return r.left + r.width / 2; }
 
-/* ========== Crear nodo persona (CORREGIDO) ========== */
+// Función para ordenar un array de parejas cronológicamente.
+function ordenarParejasPorFecha(listaParejas, ordenDescendente = true) {
+  return listaParejas.sort((a, b) => {
+    // Usamos 0 como valor por defecto si no se introdujo año, para evitar errores
+    const inicioA = a.relAnioInicio || 0;
+    const inicioB = b.relAnioInicio || 0;
+
+    if (ordenDescendente) {
+        // Orden: Más Reciente -> Más Antiguo (Ej: 2020, 2010, 1990)
+        // Esto se usa para las parejas que están "más cerca" del sujeto central.
+        return inicioB - inicioA; 
+    } else {
+        // Orden: Más Antiguo -> Más Reciente (Ej: 1990, 2010, 2020)
+        return inicioA - inicioB;
+    }
+  });
+}
+
+/* ========== Crear nodo persona ========== */
 function crearNodo(persona) {
   const div = document.createElement('div');
   
-  // 1. Asignación de Clases
   let clases = 'persona ' + (persona.sexo === 'M' ? 'hombre' : 'mujer');
-  
   if (persona.esPaciente) clases += ' paciente';
   
-  // Estados Vitales
   if (persona.estado === 'fallecido') clases += ' fallecido';
   else if (persona.estado === 'embarazo') clases += ' embarazo';
   else if (persona.estado === 'neonato_x') clases += ' neonato-x';
   else if (persona.estado === 'aborto_esp') clases += ' aborto-esp';
   else if (persona.estado === 'aborto_prov') clases += ' aborto-prov';
 
-  // Salud
-  if (persona.salud && persona.salud !== 'ninguno') {
-    clases += ' patron-' + persona.salud; 
-  }
-
-  // LGTB
+  if (persona.salud && persona.salud !== 'ninguno') clases += ' patron-' + persona.salud; 
   if (persona.lgtb) clases += ' lgtb'; 
   
   div.className = clases;
   div.dataset.id = persona.id;
 
-  // 2. Elemento Triángulo LGTB (Si corresponde)
   if (persona.lgtb) {
     const tri = document.createElement('div');
     tri.className = 'simbolo-lgtb';
     div.appendChild(tri);
   }
 
-  // 3. Texto: Nombre y Edad
-  // Aquí está el filtro: SOLO ocultamos en abortos.
   const sinTexto = ['aborto_esp', 'aborto_prov']; 
-  
   if (!sinTexto.includes(persona.estado)) {
     const nombre = document.createElement('div');
     nombre.className = 'nombre';
@@ -300,9 +344,6 @@ function crearNodo(persona) {
     div.appendChild(edad);
   }
   
-  // --- AQUÍ ESTABA EL ERROR: HABÍA OTRO BLOQUE IGUAL QUE AÑADÍA EL NOMBRE OTRA VEZ ---
-  // (Ya lo he borrado en esta versión)
-
   div.addEventListener('click', (e) => {
     e.stopPropagation();
     seleccionado = persona;
@@ -316,7 +357,7 @@ function crearNodo(persona) {
 let stage = null;
 let layer = null;
 
-/* ========== Lógica de Alineación (CORREGIDA) ========== */
+/* ========== Lógica de Alineación ========== */
 function alinearGenograma() {
   middleRow.style.transform = '';
   hijosRow.style.transform = '';
@@ -326,42 +367,30 @@ function alinearGenograma() {
   const patientDom = pacienteSlot.querySelector('.persona');
   const partnerDom = partnerLeftSlot.querySelector('.persona') || partnerRightSlot.querySelector('.persona');
   
-  // Recopilar todos los nodos de la generación del paciente (Hermanos izq + Paciente + Hermanos der)
   const leftSibs = Array.from(hermanosLeft.querySelectorAll('.persona'));
   const rightSibs = Array.from(hermanosRight.querySelectorAll('.persona'));
-  // Es vital mantener el orden visual: [Hermanos Izq] -> [Paciente] -> [Hermanos Der]
   const allSiblingsNodes = [...leftSibs, patientDom, ...rightSibs].filter(Boolean);
 
   let shiftMiddle = 0;
 
-  // Si hay padres y hay hijos (paciente o hermanos)
   if ((fatherDom || motherDom) && allSiblingsNodes.length > 0) {
     let parentsCenter = 0;
-    
-    // 1. Calcular centro de los padres
     if (fatherDom && motherDom) {
       parentsCenter = (getCenterX(fatherDom) + getCenterX(motherDom)) / 2;
     } else {
       parentsCenter = getCenterX(fatherDom || motherDom);
     }
 
-    // 2. Calcular centro del GRUPO de hijos (no solo del paciente)
     const firstRect = allSiblingsNodes[0].getBoundingClientRect();
     const lastRect = allSiblingsNodes[allSiblingsNodes.length - 1].getBoundingClientRect();
-    
-    // El centro es el promedio entre el borde izquierdo del primer hijo y el borde derecho del último
     const childrenGroupCenter = (firstRect.left + lastRect.right) / 2;
-
-    // 3. El desplazamiento es la diferencia entre el centro de los padres y el centro del grupo de hijos
     shiftMiddle = parentsCenter - childrenGroupCenter;
   }
 
-  // --- Lógica para los hijos del paciente (se mantiene igual, pero usa el nuevo shiftMiddle) ---
   let shiftHijos = 0;
   const hijosNodes = Array.from(hijosSlot.querySelectorAll('.persona'));
 
   if (patientDom && hijosNodes.length > 0) {
-    // Es importante sumar el shiftMiddle actual para saber dónde quedará visualmente el paciente
     const patientVisualX = getCenterX(patientDom) + shiftMiddle;
     let marriageVisualCenter = patientVisualX;
 
@@ -377,7 +406,6 @@ function alinearGenograma() {
     shiftHijos = marriageVisualCenter - childrenGroupCenter;
   }
 
-  // Aplicar transformaciones
   if (Math.abs(shiftMiddle) > 0.5) middleRow.style.transform = `translateX(${shiftMiddle}px)`;
   if (Math.abs(shiftHijos) > 0.5) hijosRow.style.transform = `translateX(${shiftHijos}px)`;
 }
@@ -418,9 +446,48 @@ function render() {
   pacienteSlot.appendChild(crearNodo(patient));
   rightSeq.forEach(s => hermanosRight.appendChild(crearNodo(s)));
 
-  if (partner) {
-    if (partner.sexo === 'M') partnerLeftSlot.appendChild(crearNodo(partner));
-    else partnerRightSlot.appendChild(crearNodo(partner));
+  /* --- BLOQUE CORREGIDO: DISTRIBUCIÓN DE PAREJAS Y EX-PAREJAS --- */
+  if (partners.length > 0) {
+  
+    // 1. Separar pareja ACTUAL de las EX-parejas
+    // Criterio: La 'actual' es la que NO tiene fecha fin, o la más reciente si todas tienen fin.
+    // Ordenamos por fecha para encontrar la más reciente fácil
+    let allSorted = ordenarParejasPorFecha([...partners], true); // Descendente (Más nuevo primero)
+  
+    // Asumimos que la primera de la lista ordenada es la "actual" o "última relevante"
+    let currentPartner = allSorted[0]; 
+    let exPartners = allSorted.slice(1); // El resto son exes
+
+    // 2. Determinar posición según el sexo del PACIENTE
+    // REGLA: Pareja actual va al lado opuesto del sexo del paciente, Exes van al lado contrario de la actual.
+  
+    const pacienteEsHombre = (patient.sexo === 'M');
+
+    if (pacienteEsHombre) {
+        // === PACIENTE HOMBRE ===
+        // Pareja Actual (Mujer) -> A su DERECHA (Right Slot)
+        partnerRightSlot.appendChild(crearNodo(currentPartner));
+
+        // Ex-Parejas -> A su IZQUIERDA (Left Slot)
+        // OJO: En el slot izquierdo (justify-flex-end), el último elemento añadido queda pegado al centro.
+        // Queremos: [Ex Vieja] [Ex Nueva] [PACIENTE]
+        // Así que ordenamos Cronológicamente (Ascendente)
+        let exesOrdenados = ordenarParejasPorFecha(exPartners, false); // false = ascendente (viejo a nuevo)
+        exesOrdenados.forEach(ex => partnerLeftSlot.appendChild(crearNodo(ex)));
+    } 
+    else {
+        // === PACIENTE MUJER ===
+        // Pareja Actual (Hombre) -> A su IZQUIERDA (Left Slot)
+        partnerLeftSlot.appendChild(crearNodo(currentPartner));
+
+        // Ex-Parejas -> A su DERECHA (Right Slot)
+        // En el slot derecho (justify-flex-start), el primer elemento queda pegado al centro.
+        // Queremos: [PACIENTE] [Ex Nueva] [Ex Vieja]
+        // Así que ordenamos Descendente (Nuevo a Viejo)
+        // (Ya lo tenemos en allSorted, pero filtramos solo los exes)
+        let exesOrdenados = ordenarParejasPorFecha(exPartners, true); // true = descendente
+        exesOrdenados.forEach(ex => partnerRightSlot.appendChild(crearNodo(ex)));
+    }
   }
 
   children.sort((a,b) => (getNum(b.edad)||0) - (getNum(a.edad)||0))
@@ -434,7 +501,7 @@ function render() {
   });
 }
 
-/* ========== DIBUJO DE CONEXIONES (FORMA DE U) ========== */
+/* ========== DIBUJO DE CONEXIONES ========== */
 function dibujarConexiones() {
   const width = Math.max(genogramaContainer.scrollWidth, genogramaContainer.offsetWidth);
   const height = Math.max(genogramaContainer.scrollHeight, genogramaContainer.offsetHeight);
@@ -502,53 +569,138 @@ function dibujarConexiones() {
   }
 
   // ===============================================
-  // 3) MATRIMONIO CON FORMA DE "U" (Bracket)
+  // 3) MATRIMONIOS MÚLTIPLES (Lógica de Cadena / Eslabones)
   // ===============================================
-  let marriageY = 0; // Guardamos la altura de la unión para usarla con los hijos
+  let marriageY = 0; 
+  let activePartnerCenter = null; 
 
-  if (partnerDom && patientDom) {
-    const cp = centerOf(partnerDom);
-    const cpa = centerOf(patientDom);
+  // Obtenemos todos los nodos visuales de parejas
+  const allPartnerNodes = [
+      ...Array.from(partnerLeftSlot.querySelectorAll('.persona')),
+      ...Array.from(partnerRightSlot.querySelectorAll('.persona'))
+  ];
+
+  if (patientDom && allPartnerNodes.length > 0) {
+    const cPatient = centerOf(patientDom);
     
-    // Calculamos una altura "segura" debajo de ambos nodos
-    // Bajamos 25px respecto al nodo más bajo para asegurar que pasamos "por debajo" de los hermanos
-    marriageY = Math.max(cp.bottom, cpa.bottom) + 25;
+    // 1. CALCULAR ALTURA DE LA LÍNEA
+    let maxBottom = cPatient.bottom;
+    allPartnerNodes.forEach(n => {
+        const c = centerOf(n);
+        if (c.bottom > maxBottom) maxBottom = c.bottom;
+    });
+    marriageY = maxBottom + 25; 
 
-    // Dibujamos la U: [Pareja Centro] -> [Pareja Abajo] -> [Paciente Abajo] -> [Paciente Centro]
+    // 2. CREAR LISTA ORDENADA VISUALMENTE (De Izquierda a Derecha)
+    // Esto es vital: Mezclamos al Paciente y a las Parejas en una sola lista
+    // y los ordenamos por coordenada X. Así sabemos quién está al lado de quién.
+    let visualChain = [];
+    
+    // A) Agregamos Paciente
+    visualChain.push({ 
+        type: 'patient', 
+        x: cPatient.x, 
+        center: cPatient, 
+        id: patient.id 
+    });
+    
+    // B) Agregamos Parejas
+    allPartnerNodes.forEach(node => {
+        const c = centerOf(node);
+        visualChain.push({ 
+            type: 'partner', 
+            x: c.x, 
+            center: c, 
+            id: node.dataset.id 
+        });
+    });
+
+    // C) Ordenamos por posición X (Izquierda -> Derecha)
+    visualChain.sort((a, b) => a.x - b.x);
+
+    // 3. DIBUJAR LA LÍNEA BASE HORIZONTAL
+    // Conectamos desde el primero de la izquierda hasta el último de la derecha
+    const startX = visualChain[0].x;
+    const endX = visualChain[visualChain.length - 1].x;
+    
     layer.add(new Konva.Line({ 
-        points: [cp.x, cp.y, cp.x, marriageY, cpa.x, marriageY, cpa.x, cpa.y], 
-        stroke: 'black', 
-        strokeWidth: 2 
+        points: [startX, marriageY, endX, marriageY], 
+        stroke: 'black', strokeWidth: 2 
     }));
 
-    // --- DIVORCIO ---
-    if (partner && partner.divorciado) {
-      const midX = (cp.x + cpa.x) / 2;
-      const midY = marriageY; // La marca va en la barra horizontal inferior
-      const h = 8; 
+    // Buscamos dónde quedó el paciente en la lista ordenada
+    const patientIndex = visualChain.findIndex(n => n.type === 'patient');
 
-      layer.add(new Konva.Line({ 
-        points: [midX - 6, midY + h, midX - 2, midY - h], 
-        stroke: 'black', strokeWidth: 2 
-      }));
-      layer.add(new Konva.Line({ 
-        points: [midX + 2, midY + h, midX + 6, midY - h], 
-        stroke: 'black', strokeWidth: 2 
-      }));
-    }
+    // 4. PROCESAR CADA NODO PARA SÍMBOLOS Y TALLOS
+    visualChain.forEach((node, index) => {
+        // A. Tallo Vertical (Bajada desde la persona a la línea)
+        layer.add(new Konva.Line({ 
+            points: [node.x, node.center.y, node.x, marriageY], 
+            stroke: 'black', strokeWidth: 2 
+        }));
+
+        // Si es el paciente, no lleva símbolos de relación sobre sí mismo
+        if (node.type === 'patient') return;
+
+        // B. Lógica de "El Vecino" (Neighbor) para calcular el centro del símbolo
+        // Si el nodo está a la izquierda del paciente, su "siguiente" es el de la derecha (index + 1)
+        // Si el nodo está a la derecha del paciente, su "siguiente" es el de la izquierda (index - 1)
+        let neighbor = null;
+
+        if (index < patientIndex) {
+            neighbor = visualChain[index + 1]; // Mira hacia la derecha (hacia el paciente)
+        } else {
+            neighbor = visualChain[index - 1]; // Mira hacia la izquierda (hacia el paciente)
+        }
+
+        // C. Calcular coordenadas del Símbolo
+        // Exactamente en el medio entre este nodo y su vecino
+        const midX = (node.x + neighbor.x) / 2;
+
+        const pData = partners.find(p => p.id === node.id);
+        if (pData) {
+            const h = 8; 
+            const symbolConfig = { stroke: 'black', strokeWidth: 2 };
+            const tipo = pData.tipoRelacion;
+
+            // Dibujar símbolos (//, /, etc)
+            if (tipo === 'separacion') {
+                layer.add(new Konva.Line({ points: [midX - 4, marriageY + h, midX + 4, marriageY - h], ...symbolConfig }));
+            } else if (tipo === 'divorcio') {
+                layer.add(new Konva.Line({ points: [midX - 6, marriageY + h, midX - 2, marriageY - h], ...symbolConfig }));
+                layer.add(new Konva.Line({ points: [midX + 2, marriageY + h, midX + 6, marriageY - h], ...symbolConfig }));
+            } else if (tipo === 'reconciliacion') {
+                layer.add(new Konva.Line({ points: [midX - 8, marriageY - h, midX + 8, marriageY + h], ...symbolConfig }));
+            }
+
+            // Tallo punteado si es "pareja de hecho"
+            if (tipo === 'de_hecho') {
+                 // Truco visual: pintamos línea blanca encima y luego punteada negra
+                 layer.add(new Konva.Line({ points: [node.x, node.center.y, node.x, marriageY], stroke: 'white', strokeWidth: 2 }));
+                 layer.add(new Konva.Line({ points: [node.x, node.center.y, node.x, marriageY], stroke: 'black', strokeWidth: 2, dash: [10, 5] }));
+            }
+
+            // Detectar "pareja activa" para conectar hijos luego
+            if (!activePartnerCenter && (tipo === 'normal' || tipo === 'de_hecho')) {
+                activePartnerCenter = node.center;
+            }
+        }
+    });
+    
+    // Fallback: Si todas son ex-parejas, usamos al paciente para que salgan los hijos
+    // (Opcional, depende de tu lógica de negocio)
   }
 
   // ===============================================
-  // 4) HIJOS (Colgando de la barra U)
+  // 4) HIJOS (Adaptado para multipareja)
   // ===============================================
   if (patientDom && hijosDom.length) {
     const cPatient = centerOf(patientDom);
     let startX, startY;
 
-    if (partnerDom) {
-      const cPartner = centerOf(partnerDom);
-      // El origen de los hijos es el centro de la barra horizontal inferior (la U)
-      startX = (cPatient.x + cPartner.x) / 2;
+    if (activePartnerCenter) {
+      // Si hay pareja, salimos del medio entre Paciente y Pareja Activa
+      startX = (cPatient.x + activePartnerCenter.x) / 2;
       startY = marriageY; 
     } else {
       // Madre/Padre soltero
@@ -558,16 +710,60 @@ function dibujarConexiones() {
 
     const minChildTop = Math.min(...hijosDom.map(h => centerOf(h).top));
     const yEnd = (startY + minChildTop) / 2 + 15;
-    
-    // Tallo vertical desde el matrimonio hacia abajo
+
+    // Tallo vertical
     layer.add(new Konva.Line({ points: [startX, startY, startX, yEnd], stroke: 'black', strokeWidth: 2 }));
 
-    // Barra horizontal sobre los hijos y bajadas individuales
-    hijosDom.forEach(h => {
-      const ch = centerOf(h);
-      layer.add(new Konva.Line({ points: [startX, yEnd, ch.x, yEnd], stroke: 'black', strokeWidth: 2 }));
-      layer.add(new Konva.Line({ points: [ch.x, yEnd, ch.x, ch.top], stroke: 'black', strokeWidth: 2 }));
-    });
+    // Barra horizontal sobre los hijos
+    const allX = hijosDom.map(h => centerOf(h).x);
+    const minX = Math.min(...allX);
+    const maxX = Math.max(...allX);
+    layer.add(new Konva.Line({ points: [minX, yEnd, maxX, yEnd], stroke: 'black', strokeWidth: 2 }));
+
+    // Bajadas individuales
+    for (let i = 0; i < hijosDom.length; i++) {
+      const hNode = hijosDom[i];
+      const hData = children.find(c => c.id === hNode.dataset.id); 
+      if (!hData) continue; 
+
+      const ch = centerOf(hNode);
+      const tipo = hData.tipoHijo || 'biologico';
+
+      // --- CASO GEMELOS / MELLIZOS ---
+      let esParejaGemelos = false;
+      if (i < hijosDom.length - 1) {
+        const nextNode = hijosDom[i+1];
+        const nextData = children.find(c => c.id === nextNode.dataset.id);
+        
+        if (nextData && (tipo === 'mellizo' || tipo === 'gemelo') && (nextData.tipoHijo === tipo)) {
+             esParejaGemelos = true;
+             const chNext = centerOf(nextNode);
+             
+             // Punto medio triángulo
+             const midX = (ch.x + chNext.x) / 2;
+             
+             layer.add(new Konva.Line({ points: [midX, yEnd, ch.x, ch.top], stroke: 'black', strokeWidth: 2 }));
+             layer.add(new Konva.Line({ points: [midX, yEnd, chNext.x, chNext.top], stroke: 'black', strokeWidth: 2 }));
+             
+             if (tipo === 'gemelo') {
+               const barY = (yEnd + ch.top) / 2 + 5;
+               const ratio = 0.5;
+               const x1 = midX + (ch.x - midX) * ratio;
+               const x2 = midX + (chNext.x - midX) * ratio;
+               layer.add(new Konva.Line({ points: [x1, barY, x2, barY], stroke: 'black', strokeWidth: 2 }));
+             }
+             i++; // Saltar el siguiente hermano
+             continue; 
+        }
+      }
+
+      // --- CASO NORMAL O ADOPTADO ---
+      const configLinea = { 
+        stroke: 'black', strokeWidth: 2,
+        dash: (tipo === 'adoptado') ? [5, 5] : [] 
+      };
+      layer.add(new Konva.Line({ points: [ch.x, yEnd, ch.x, ch.top], ...configLinea }));
+    }
   }
 
   layer.draw();
@@ -585,17 +781,18 @@ function abrirMenu(x,y){ menu.style.left=x+'px'; menu.style.top=y+'px'; menu.cla
 function cerrarMenu(){ menu.classList.add('oculto'); seleccionado=null; }
 menuAgregarBtn.onclick = ()=>{ cerrarMenu(); abrirFormFamiliar(); };
 menuEliminarBtn.onclick = ()=>{ if(seleccionado) eliminarSeleccionado(); cerrarMenu(); };
-/* --- B. INICIALIZACIÓN --- */
+
 function abrirFormFamiliar(){ 
   formFamiliar.classList.remove('oculto'); 
-  toggleDivorcioOption(); 
-  filtrarOpcionesEstado();   // Ocultar embarazo si es "Padre"
-  actualizarCamposPorEstado(); // Bloquear salud/lgtb si ya estaba marcado un aborto
+  // Disparamos el evento change para configurar estados correctos al abrir
+  famRolSelect.dispatchEvent(new Event('change'));
+  actualizarCamposPorEstado();
 }
 function cerrarFormFamiliar(){ formFamiliar.classList.add('oculto'); }
 
-/* --- C. BOTÓN GUARDAR (Validación de Nombre relajada) --- */
-guardarFamiliarBtn.onclick = ()=>{
+/* --- C. BOTÓN GUARDAR (CORREGIDO) --- */
+guardarFamiliarBtn.onclick = () => {
+  // 1. CAPTURA DE TODOS LOS INPUTS (Incluyendo los nuevos de fechas)
   const nomInput = document.getElementById('famNombre');
   const apeInput = document.getElementById('famApellido');
   const edadInput = document.getElementById('famEdad');
@@ -604,20 +801,30 @@ guardarFamiliarBtn.onclick = ()=>{
   const estadoInput = document.getElementById('famEstado');
   const saludInput = document.getElementById('famSalud');
   const lgtbInput = document.getElementById('famLgtb');
-  const divorcioInput = document.getElementById('famDivorcio'); 
+  const tipoRelacionInput = document.getElementById('famTipoRelacion'); 
+  const tipoHijoInput = document.getElementById('famTipoHijo');
+  
+  // --- NUEVO: Capturar los inputs de fecha aquí arriba ---
+  const anioInicioInput = document.getElementById('relAnioInicio');
+  const anioFinInput = document.getElementById('relAnioFin');
+
+  // Validaciones básicas
   const estado = estadoInput.value;
   const nom = nomInput.value.trim();
-
-  // --- CAMBIO AQUÍ: Permitir sin nombre si es pérdida o embarazo ---
   const permiteSinNombre = ['embarazo', 'aborto_esp', 'aborto_prov'].includes(estado);
   
-  if(!nom && !permiteSinNombre) {
-    return alert("Por favor ingresa un nombre");
-  }
+  if (!nom && !permiteSinNombre) return alert("Por favor ingresa un nombre");
 
+  // Función auxiliar para limpiar el año (convierte texto a número o null)
+  const getYearVal = (input) => {
+    const val = parseInt(input.value.trim());
+    // Si es un número válido y mayor a 1800, lo guardamos. Si no, null.
+    return (Number.isFinite(val) && val > 1800) ? val : null;
+  };
+
+  // 2. CREACIÓN DEL OBJETO
   const p = { 
     id: uid(), 
-    // Si no pone nombre, guardamos cadena vacía para que no salga "undefined"
     nombre: nom || '', 
     apellido: apeInput.value, 
     edad: edadInput.value, 
@@ -625,20 +832,38 @@ guardarFamiliarBtn.onclick = ()=>{
     estado: estado, 
     salud: saludInput.value,
     lgtb: lgtbInput.checked,
-    divorciado: divorcioInput.checked 
+    tipoRelacion: tipoRelacionInput.value,
+    tipoHijo: tipoHijoInput.value,
+    // Como ya definimos 'anioInicioInput' y 'getYearVal' arriba, esto ya no dará error
+    relAnioInicio: (rolInput.value === 'pareja') ? getYearVal(anioInicioInput) : null,
+    relAnioFin: (rolInput.value === 'pareja') ? getYearVal(anioFinInput) : null
   };
 
+  // 3. LOGICA DE GUARDADO (Igual que antes)
   const rol = rolInput.value;
-  if(rol==='padre') { if(p.sexo==='M') parents.father=p; else parents.mother=p; }
-  else if(rol==='pareja') partner=p;
-  else if(rol==='hermano') siblings.push(p);
-  else if(rol==='hijo') children.push(p);
+  if (rol === 'padre') { 
+    if (p.sexo === 'M') parents.father = p; else parents.mother = p; 
+  }
+  else if(rol==='pareja') {
+    // Si estamos editando uno existente, lo reemplazamos
+    const idx = partners.findIndex(x => x.id === p.id);
+    if (idx >= 0) partners[idx] = p;
+    else partners.push(p); // Si es nuevo, lo añadimos a la lista
+  }
+  else if (rol === 'hermano') siblings.push(p);
+  else if (rol === 'hijo') children.push(p);
   
-  // RESET
+  // 4. RESETEAR FORMULARIO
   nomInput.value = ''; apeInput.value = ''; edadInput.value = '';
   estadoInput.value = 'vivo'; saludInput.value = 'ninguno';
-  lgtbInput.checked = false; divorcioInput.checked = false;
-  sexoInput.value = 'M'; rolInput.value = 'hijo';
+  lgtbInput.checked = false;
+  tipoRelacionInput.value = 'normal';
+  tipoHijoInput.value = 'biologico';
+  sexoInput.value = 'M'; rolInput.value = 'padre';
+  
+  // Resetear fechas también
+  anioInicioInput.value = '';
+  anioFinInput.value = '';
 
   cerrarFormFamiliar(); 
   render();
@@ -649,7 +874,7 @@ function eliminarSeleccionado(){
   if(patient && patient.id===id) { patient=null; formPaciente.style.display='block'; }
   if(parents.father && parents.father.id===id) parents.father=null;
   if(parents.mother && parents.mother.id===id) parents.mother=null;
-  if(partner && partner.id===id) partner=null;
+  partners = partners.filter(p => p.id !== id);
   siblings = siblings.filter(s=>s.id!==id);
   children = children.filter(c=>c.id!==id);
   render();

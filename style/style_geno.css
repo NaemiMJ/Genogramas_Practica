@@ -39,29 +39,133 @@ h1 {
   font-size: 13px;
 }
 
-/* Genograma layout */
+/* =========================================
+   GENOGRAMA LAYOUT - VERSIÓN CORREGIDA
+   ========================================= */
+
+/* 1. Contenedor con Scroll: Permite movernos si el gráfico es muy ancho */
 .genograma-container {
-  position: relative;
-  margin-top: 28px;
-  display: flex;
-  justify-content: center;
+    position: relative;
+    width: 100%;
+    height: calc(100vh - 100px); /* Ocupa la pantalla menos el header */
+    overflow: auto; /* Scroll automático vertical y horizontal */
+    padding: 50px;  /* Margen interno para que no quede pegado */
+    text-align: center; /* Ayuda al centrado inicial */
 }
+
 #conexiones {
   position: absolute;
   top: 0; left: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
+  z-index: 1; /* Debajo de las personas */
 }
 
-/* filas y slots */
-.genograma { display:flex; flex-direction:column; gap: 24px; align-items:center; width: 100%; max-width: 960px; padding: 18px; }
-.fila { display:flex; gap: 18px; align-items:center; justify-content:center; width:100%; }
-.padres { justify-content: center; gap: 60px; }
-.parent-slot { width:150px; height:120px; display:flex; align-items:center; justify-content:center; }
-.paciente-slot { display:flex; align-items:center; justify-content:center; width:150px; min-width:150px; min-height:150px; }
-.hermanos.left, .hermanos.right { display:flex; gap: 14px; align-items:center; justify-content:center; min-width:160px; }
-.hijos { gap: 24px; justify-content:center; flex-wrap:wrap; }
+/* 2. El lienzo que crece infinitamente */
+.genograma {
+    position: relative;
+    display: inline-block; /* CLAVE: Permite crecer a lo ancho sin límite */
+    min-width: 100%;       /* Mínimo el ancho de pantalla */
+    width: max-content;    /* Se ensancha tanto como necesiten las personas */
+    margin: 0 auto;
+    z-index: 2;
+}
+
+/* 3. Filas Flexibles */
+.fila {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Centrado inicial */
+    gap: 40px;
+    margin-bottom: 60px;     /* Espacio vertical entre generaciones */
+    width: 100%;
+}
+
+/* 4. BLOQUEO DE ENCOGIMIENTO (Anti-Aplastamiento) 
+   Esto asegura que NINGÚN elemento se haga más pequeño de lo que necesita.
+   Usamos !important para sobrescribir cualquier residuo. */
+.fila > div, 
+.pareja-slot, 
+.center-block, 
+.hermanos, 
+.paciente-slot,
+.persona,
+.parent-slot {
+    flex-shrink: 0 !important; 
+}
+
+/* Slots específicos ajustados */
+.padres { 
+  justify-content: center; 
+  gap: 80px; /* Separación entre padre y madre */
+}
+
+.parent-slot { 
+  width: 150px; 
+  height: 120px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+}
+
+.paciente-slot { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  width: 150px; 
+  min-width: 150px; 
+  min-height: 150px; 
+}
+
+.hermanos { 
+  display: flex; 
+  gap: 20px; 
+  align-items: center; 
+  justify-content: center; 
+}
+
+.center-block { 
+  display: flex; 
+  align-items: center; 
+  gap: 20px; 
+}
+
+.hijos { 
+  gap: 30px; 
+  justify-content: center; 
+  /* flex-wrap: wrap; <--- QUITADO: Mejor que crezca a lo ancho que saltar de línea */
+}
+
+/* --- PAREJAS (FIX PRINCIPAL) --- */
+.pareja-slot {
+    display: flex;
+    align-items: center;
+    width: auto !important; /* Deja que crezca según cuántas parejas haya */
+    min-width: 50px;
+    gap: 30px; /* Espacio entre ex-parejas */
+}
+
+/* Alineación específica de parejas */
+#partner-left-slot {
+    justify-content: flex-end; /* Empuja contenido hacia el paciente */
+    padding-right: 20px;
+}
+
+#partner-right-slot {
+    justify-content: flex-start; /* Empuja contenido hacia el paciente */
+    padding-left: 20px;
+}
+
+/* Corrección visual para alineación */
+.middle-row {
+    margin-bottom: 60px; 
+}
+
+
+/* =========================================
+   DISEÑO VISUAL (PERSONAS, SÍMBOLOS, ETC)
+   ========================================= */
 
 /* persona (figuras) */
 .persona {
@@ -75,6 +179,7 @@ h1 {
   background: #fff;
   cursor: pointer;
   padding: 6px;
+  z-index: 4;
 }
 
 /* colores y formas base */
@@ -90,18 +195,13 @@ h1 {
 }
 
 /* --- TEXTO GLOBAL (Siempre legible) --- */
-
 .persona .nombre, .persona .edad {
   position: relative;
   z-index: 10; /* Siempre encima de iconos, X o patrones */
   text-align: center;
-  
-  /* FONDO "GLOBAL": Se aplica a todos (fallecidos, lgtb, sanos...) */
-  background-color: rgba(255, 255, 255, 0.85); /* Blanco al 85% */
-  padding: 1px 4px;       /* Un poco de aire alrededor del texto */
-  border-radius: 4px;     /* Bordes redondeados */
-  
-  /* Sombra suave para separar el texto blanco del fondo blanco si coinciden */
+  background-color: rgba(255, 255, 255, 0.85); 
+  padding: 1px 4px;      
+  border-radius: 4px;    
   box-shadow: 0 0 3px rgba(0,0,0,0.1); 
 }
 
@@ -114,7 +214,7 @@ h1 {
 .persona .edad { 
   font-size: 12px; 
   color: #333; 
-  margin-top: 2px; /* Un poco más pegado al nombre */
+  margin-top: 2px; 
 }
 
 /* Figura interior que marca "paciente" (doble contorno) */
@@ -122,213 +222,142 @@ h1 {
   content: "";
   position: absolute;
   z-index: 2;
-  top: 14px;
-  left: 14px;
-  right: 14px;
-  bottom: 14px;
+  top: 14px; left: 14px; right: 14px; bottom: 14px;
   border: 3px solid var(--c);
   pointer-events: none;
-  /* por defecto cuadrado; para mujer se redefine */
   border-radius: 8px;
 }
-
 /* si paciente y mujer -> inner circle */
 .persona.paciente.mujer::after { border-radius: 50%; }
 
-/* Asegurar que el contenido textual esté sobre el borde interior */
-.persona { background: #fff; z-index: 4; }
-
 /* --- ESTILO FALLECIDO (La X) --- */
-
-/* 1. Quitamos el fondo del elemento principal para que NO borre los patrones de salud */
-.persona.fallecido {
-  /* overflow: hidden; <--- Lo quitamos para que no corte bordes si usamos sombras */
-}
-
-/* 2. Dibujamos la X en una capa virtual (::before) que flota ENCIMA del fondo negro */
 .persona.fallecido::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: inherit; /* Hereda si es círculo o cuadrado */
+  top: 0; left: 0; width: 100%; height: 100%;
+  border-radius: inherit; 
   pointer-events: none;
-  z-index: 5; /* Capa intermedia: Encima del fondo, debajo del texto/LGTB */
-
-  /* Dibujo de la X usando gradientes, igual que antes pero en esta capa */
+  z-index: 5; 
   background: 
     linear-gradient(to top right, transparent calc(50% - 2px), var(--c) calc(50% - 1px), var(--c) calc(50% + 1px), transparent calc(50% + 2px)),
     linear-gradient(to bottom right, transparent calc(50% - 2px), var(--c) calc(50% - 1px), var(--c) calc(50% + 1px), transparent calc(50% + 2px));
-  
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
 
-/* CORRECCIÓN DE LECTURA (Solo aseguramos que el texto esté encima de la X) */
-.persona.fallecido .nombre, 
-.persona.fallecido .edad {
-  position: relative; 
-  z-index: 10; /* Texto siempre arriba de todo */
-}
-
 /* --- PATRONES DE ABUSO Y SALUD MENTAL --- */
-
-/* 1. Abuso de Alcohol/Drogas: Mitad inferior negra */
 .persona.patron-abuso {
   background: linear-gradient(to bottom, #fff 50%, #000 50%);
 }
-
-/* 2. Sospechoso de Abuso: Mitad inferior rayada */
 .persona.patron-sospecha {
   background: 
     linear-gradient(to bottom, #fff 50%, transparent 50%),
-    repeating-linear-gradient(
-      -45deg, 
-      #000, 
-      #000 2px, 
-      transparent 2px, 
-      transparent 6px
-    );
+    repeating-linear-gradient(-45deg, #000, #000 2px, transparent 2px, transparent 6px);
 }
-
-/* 3. Problemas Mentales: Mitad izquierda negra */
 .persona.patron-mental {
   background: linear-gradient(to right, #000 50%, #fff 50%);
 }
-
-/* 4. Abuso + Mental (Comorbilidad): 3/4 Negro */
 .persona.patron-ambos {
   background: 
     linear-gradient(to right, #000 50%, transparent 50%),
     linear-gradient(to bottom, transparent 50%, #000 50%),
     #fff;
 }
-
-/* 5. NUEVO: Ingreso / Recuperación (Cuadrante inferior izquierdo negro) */
 .persona.patron-ingreso {
   background: 
-    /* Capa 1: La mitad de ARRIBA es toda blanca (tapa todo) */
     linear-gradient(to bottom, #fff 50%, transparent 50%),
-    
-    /* Capa 2: La mitad de ABAJO se divide: Izquierda Negra, Derecha Blanca */
     linear-gradient(to right, #000 50%, #fff 50%);
 }
 
-/* --- SÍMBOLO LGTBIQ+ (Triángulo Invertido GRANDE) --- */
-
+/* --- SÍMBOLO LGTBIQ+ --- */
 .persona.lgtb .simbolo-lgtb {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  
-  /* CORRECCIÓN AQUÍ: */
-  /* Antes era 1. Lo subimos a 6 para que tape a la X de fallecido (que es 5) */
   z-index: 6; 
-  
-  /* 1. Borde Exterior */
-  width: 0; 
-  height: 0;
+  width: 0; height: 0;
   border-left: 28px solid transparent;  
   border-right: 28px solid transparent; 
   border-top: 45px solid var(--c);      
 }
-
-/* 2. Máscara Interior (Blanco) */
 .persona.lgtb .simbolo-lgtb::after {
   content: "";
   position: absolute;
-  top: -41px;   
-  left: -22px;  
-  width: 0; 
-  height: 0; 
+  top: -41px; left: -22px;  
+  width: 0; height: 0; 
   border-left: 22px solid transparent; 
   border-right: 22px solid transparent; 
-  /* Este fondo blanco es el que "borrará" la X que quede detrás */
   border-top: 35px solid #fff;          
 }
 
-/* --- SÍMBOLOS DE PÉRDIDA Y EMBARAZO (AJUSTADOS) --- */
-
-/* --- EMBARAZO (Ajustado: Más arriba y cerrado abajo) --- */
+/* --- EMBARAZO --- */
 .persona.embarazo {
-  width: 44px; 
-  height: 40px;
+  width: 44px; height: 40px;
   background: transparent;
-  border: none; 
-  border-radius: 0;
+  border: none; border-radius: 0;
   position: relative;
 }
-
-/* Triángulo de COLOR (Exterior) */
 .persona.embarazo::after {
   content: ""; 
   position: absolute; 
-  
-  /* 1. LO SUBIMOS: De 50% a 40% */
-  top: 40%; 
-  left: 50%;
+  top: 40%; left: 50%;
   transform: translate(-50%, -50%);
   z-index: 1;
-  
   width: 0; height: 0;
   border-left: 22px solid transparent; 
   border-right: 22px solid transparent; 
   border-bottom: 40px solid var(--c); 
 }
-
-/* Triángulo BLANCO (Interior) */
 .persona.embarazo::before {
   content: ""; 
   position: absolute; 
-  
-  /* 2. LO CERRAMOS: Ajuste matemático preciso */
-  /* Lo ponemos 4px más abajo que el pico del triángulo de color */
-  /* Si el de color está en 40%, este empieza un pelín más abajo */
-  top: calc(40% - 16px); /* Ajuste visual manual respecto al centro */
-  /* O más fácil: usamos el mismo transform pero ajustamos top relativo */
-  
-  /* MEJOR MÉTODO DE POSICIONAMIENTO PARA "CERRARLO": */
-  top: 40%; /* Mismo centro base */
-  left: 50%;
-  
-  /* Lo movemos: 
-     -50% en X (centrado)
-     -42% en Y (Un poco menos que -50% para que baje y deje ver la punta de arriba)
-  */
+  top: 40%; left: 50%;
   transform: translate(-50%, -42%);
   z-index: 2;
-  
   width: 0; height: 0;
   border-left: 17px solid transparent; 
   border-right: 17px solid transparent; 
-  /* Altura reducida a 32px (40 - 32 = 8px de margen vertical total repartido) */
   border-bottom: 32px solid #fff;
 }
 
-/* --- NEONATO MUERTO (Color corregido) --- */
+/* 2. Aborto Espontáneo (Punto Negro) */
+.persona.aborto-esp {
+  width: 30px; 
+  height: 30px; 
+  background: #000; 
+  border-radius: 50%; /* Siempre círculo */
+  border: none;
+}
+
+/* 3. Aborto Provocado (X pequeña sola) */
+.persona.aborto-prov {
+  width: 30px; height: 30px; 
+  background: transparent; 
+  border: none;
+}
+.persona.aborto-prov::before, .persona.aborto-prov::after {
+  content: ""; position: absolute; 
+  top: 0; left: 13px; /* Centrado aproximado */
+  width: 4px; height: 30px; 
+  background: #000;
+}
+.persona.aborto-prov::before { transform: rotate(45deg); }
+.persona.aborto-prov::after { transform: rotate(-45deg); }
+
+/* --- NEONATO MUERTO --- */
 .persona.neonato-x {
-  width: 40px; 
-  height: 40px;
-  border: 2px solid var(--c); /* Borde de color */
+  width: 40px; height: 40px;
+  border: 2px solid var(--c); 
   display: flex; align-items: center; justify-content: center;
   background: #fff;
   overflow: hidden;
 }
-
-/* La X interna AHORA USA EL COLOR DEL GÉNERO (var(--c)) */
 .persona.neonato-x::before {
   content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  
-  /* CAMBIO: Reemplazado #000 por var(--c) */
   background: 
     linear-gradient(to top right, transparent calc(50% - 1px), var(--c) calc(50% - 0.5px), var(--c) calc(50% + 0.5px), transparent calc(50% + 1px)),
     linear-gradient(to bottom right, transparent calc(50% - 1px), var(--c) calc(50% - 0.5px), var(--c) calc(50% + 0.5px), transparent calc(50% + 1px));
 }
-
-/* Asegurar herencia de forma */
 .persona.neonato-x.mujer { border-radius: 50%; }
 .persona.neonato-x.hombre { border-radius: 0; }
 
@@ -355,11 +384,10 @@ h1 {
 }
 .menu-acciones button:hover { background:#2b7cb0; }
 
-/* modal compacto formulario familiar */
+/* modal compacto */
 .modal {
   position: fixed;
-  left: 50%;
-  top: 50%;
+  left: 50%; top: 50%;
   transform: translate(-50%,-50%);
   z-index: 60;
   width: 320px;
