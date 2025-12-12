@@ -83,6 +83,13 @@
         </label>
       </div>
 
+      <div id="divSelectPareja" style="display:none; margin-top:8px;">
+        <label>Otro Progenitor (Pareja):
+          <select id="famIdPareja" style="width:100%">
+            </select>
+        </label>
+      </div>
+
       <label>Salud / Problemas:
         <select id="famSalud" style="width:100%">
           <option value="ninguno">Ninguno</option>
@@ -199,23 +206,41 @@ function toggleDivorcioOption() {
   }
 }
 
-// NUEVO: Listener unificado para cambios de ROL (Pareja y Tipo de Hijo)
+/* --- MODIFICAR: Listener unificado para cambios de ROL --- */
 famRolSelect.addEventListener('change', () => {
+  const rol = famRolSelect.value;
+  
   // 1. Lógica de Pareja
   toggleDivorcioOption();
   
-  // 2. Lógica de Estados (abortos, etc)
+  // 2. Lógica de Estados
   filtrarOpcionesEstado();
 
-  // 3. NUEVO: Lógica para mostrar "Tipo de Hijo"
+  // 3. Lógica de Hijos (Tipo y Pareja)
   const divTipoHijo = document.getElementById('divTipoHijo');
+  const divSelectPareja = document.getElementById('divSelectPareja');
+  const selectPareja = document.getElementById('famIdPareja');
   const tipoHijoInput = document.getElementById('famTipoHijo');
   
-  if (famRolSelect.value === 'hijo') {
+  if (rol === 'hijo') {
     divTipoHijo.style.display = 'block';
+    divSelectPareja.style.display = 'block';
+
+    // Llenar select con parejas actuales
+    selectPareja.innerHTML = '<option value="">-- Desconocido / Solo Paciente --</option>';
+    partners.forEach(p => {
+      const option = document.createElement('option');
+      option.value = p.id;
+      // Muestra nombre o "Pareja" si no tiene nombre
+      option.textContent = p.nombre ? p.nombre : 'Pareja sin nombre'; 
+      selectPareja.appendChild(option);
+    });
+
   } else {
     divTipoHijo.style.display = 'none';
-    tipoHijoInput.value = 'biologico'; // Reset por seguridad
+    divSelectPareja.style.display = 'none';
+    tipoHijoInput.value = 'biologico';
+    selectPareja.innerHTML = '';
   }
 });
 
@@ -357,57 +382,127 @@ function crearNodo(persona) {
 let stage = null;
 let layer = null;
 
-/* ========== Lógica de Alineación ========== */
+/* --- ALINEACIÓN INTELIGENTE (Detecta vecinos para no solapar hijos) --- */
 function alinearGenograma() {
+  // 1. LIMPIEZA INICIAL
   middleRow.style.transform = '';
   hijosRow.style.transform = '';
+  document.querySelectorAll('.child-group').forEach(g => g.style.transform = '');
+  document.querySelectorAll('.middle-row .persona').forEach(p => p.style.transform = '');
 
-  const fatherDom = padreSlot.querySelector('.persona');
-  const motherDom = madreSlot.querySelector('.persona');
   const patientDom = pacienteSlot.querySelector('.persona');
-  const partnerDom = partnerLeftSlot.querySelector('.persona') || partnerRightSlot.querySelector('.persona');
-  
-  const leftSibs = Array.from(hermanosLeft.querySelectorAll('.persona'));
-  const rightSibs = Array.from(hermanosRight.querySelectorAll('.persona'));
-  const allSiblingsNodes = [...leftSibs, patientDom, ...rightSibs].filter(Boolean);
+  if (!patientDom) return;
 
-  let shiftMiddle = 0;
+  const cPatient = getCenterX(patientDom);
 
-  if ((fatherDom || motherDom) && allSiblingsNodes.length > 0) {
-    let parentsCenter = 0;
-    if (fatherDom && motherDom) {
-      parentsCenter = (getCenterX(fatherDom) + getCenterX(motherDom)) / 2;
+  // --- A. Recopilar datos ---
+  const groups = Array.from(document.querySelectorAll('.child-group'));
+  if (groups.length === 0) return;
+
+  let groupData = groups.map(group => {
+    const rect = group.getBoundingClientRect();
+    const partnerId = group.dataset.partnerId;
+    let targetX = 0;
+
+    if (partnerId === 'single') {
+        targetX = cPatient;
     } else {
-      parentsCenter = getCenterX(fatherDom || motherDom);
+        const partnerDom = document.querySelector(`.persona[data-id="${partnerId}"]`);
+        
+        if (partnerDom) {
+            const cPartner = getCenterX(partnerDom);
+            
+            // --- NUEVO: LÓGICA DE VECINOS ---
+            // En lugar de ir siempre hasta el Paciente, buscamos quién está al lado
+            // para poner a los hijos en el hueco libre inmediato.
+            let obstacleDom = null;
+
+            // Verificamos si la pareja está en el slot Izquierdo o Derecho
+            if (partnerLeftSlot.contains(partnerDom)) {
+                // IZQUIERDA: El vecino hacia el centro es el "siguiente hermano" en el DOM
+                // (Porque el orden es: Ex1, Ex2, ... Paciente)
+                obstacleDom = partnerDom.nextElementSibling;
+                // Si no hay más ex-parejas a la derecha, el obstáculo es el Paciente
+                if (!obstacleDom) obstacleDom = patientDom;
+            } 
+            else if (partnerRightSlot.contains(partnerDom)) {
+                // DERECHA: El vecino hacia el centro es el "hermano anterior"
+                // (Porque el orden es: Paciente ... Pareja1, Pareja2)
+                obstacleDom = partnerDom.previousElementSibling;
+                // Si no hay nadie antes, el obstáculo es el Paciente
+                if (!obstacleDom) obstacleDom = patientDom;
+            }
+
+            // Calculamos el centro del obstáculo (Ex2 o Paciente)
+            const cObstacle = obstacleDom ? getCenterX(obstacleDom) : cPatient;
+
+            // EL CENTRO SEGURO: Promedio entre la Pareja y su Vecino Inmediato
+            targetX = (cPartner + cObstacle) / 2;
+
+        } else {
+            targetX = cPatient;
+        }
     }
 
-    const firstRect = allSiblingsNodes[0].getBoundingClientRect();
-    const lastRect = allSiblingsNodes[allSiblingsNodes.length - 1].getBoundingClientRect();
-    const childrenGroupCenter = (firstRect.left + lastRect.right) / 2;
-    shiftMiddle = parentsCenter - childrenGroupCenter;
+    return {
+        node: group,
+        partnerId: partnerId,
+        rect: rect,
+        width: rect.width,
+        currentX: rect.left + rect.width / 2, 
+        idealX: targetX,      
+        finalX: targetX       
+    };
+  });
+
+  // Ordenar visualmente para la física
+  groupData.sort((a, b) => a.idealX - b.idealX);
+
+  // --- B. Resolver Colisiones (Igual que antes) ---
+  const GAP = 40; 
+
+  for (let step = 0; step < 3; step++) {
+      for (let i = 0; i < groupData.length - 1; i++) {
+          const g1 = groupData[i];
+          const g2 = groupData[i + 1];
+
+          const g1Right = g1.finalX + g1.width / 2;
+          const g2Left = g2.finalX - g2.width / 2;
+
+          if (g1Right + GAP > g2Left) {
+              const overlap = (g1Right + GAP) - g2Left;
+              g1.finalX -= overlap / 2;
+              g2.finalX += overlap / 2;
+          }
+      }
   }
 
-  let shiftHijos = 0;
-  const hijosNodes = Array.from(hijosSlot.querySelectorAll('.persona'));
+  // --- C. Aplicar Movimientos ---
+  groupData.forEach(d => {
+      // 1. Mover Hijos
+      const shiftChildren = d.finalX - d.currentX;
+      d.node.style.transform = `translateX(${shiftChildren}px)`;
 
-  if (patientDom && hijosNodes.length > 0) {
-    const patientVisualX = getCenterX(patientDom) + shiftMiddle;
-    let marriageVisualCenter = patientVisualX;
+      // 2. Mover Pareja (Efecto Palanca)
+      if (d.partnerId !== 'single') {
+          const deltaCenter = d.finalX - d.idealX; 
+          if (Math.abs(deltaCenter) > 0.1) {
+             const partnerNode = document.querySelector(`.persona[data-id="${d.partnerId}"]`);
+             if (partnerNode) {
+                 // Nota: Aquí usamos un factor 1.5 o 2 suave, porque ahora el punto de referencia
+                 // no es fijo (el vecino también puede moverse). Usar 2 suele funcionar bien.
+                 const partnerShift = deltaCenter * 2;
+                 partnerNode.style.transform = `translateX(${partnerShift}px)`;
+             }
+          }
+      }
+  });
+}
 
-    if (partnerDom) {
-      const partnerVisualX = getCenterX(partnerDom) + shiftMiddle;
-      marriageVisualCenter = (patientVisualX + partnerVisualX) / 2;
-    }
-
-    const firstChildRect = hijosNodes[0].getBoundingClientRect();
-    const lastChildRect = hijosNodes[hijosNodes.length - 1].getBoundingClientRect();
-    const childrenGroupCenter = (firstChildRect.left + lastChildRect.right) / 2;
-    
-    shiftHijos = marriageVisualCenter - childrenGroupCenter;
-  }
-
-  if (Math.abs(shiftMiddle) > 0.5) middleRow.style.transform = `translateX(${shiftMiddle}px)`;
-  if (Math.abs(shiftHijos) > 0.5) hijosRow.style.transform = `translateX(${shiftHijos}px)`;
+// Función auxiliar simple si no la tienes global
+function getCenterX(el) { 
+    const r = el.getBoundingClientRect(); 
+    return r.left + r.width / 2; 
 }
 
 /* ========== Renderizar ========== */
@@ -490,11 +585,50 @@ function render() {
     }
   }
 
-  children.sort((a,b) => (getNum(b.edad)||0) - (getNum(a.edad)||0))
-    .forEach(h => hijosSlot.appendChild(crearNodo(h)));
+  // 1. Limpiamos el slot de hijos
+  hijosSlot.innerHTML = '';
 
+  // 2. Identificar el orden visual de las parejas (Izquierda -> Derecha)
+  const leftPartnersIds = Array.from(partnerLeftSlot.querySelectorAll('.persona')).map(el => el.dataset.id);
+  const rightPartnersIds = Array.from(partnerRightSlot.querySelectorAll('.persona')).map(el => el.dataset.id);
+  
+  // Creamos una lista de "IDs de grupos" en el orden que aparecen en pantalla
+  // 'single' representa hijos solo del paciente (sin pareja conocida o seleccionada)
+  const visualGroupsOrder = [...leftPartnersIds, 'single', ...rightPartnersIds];
+
+  // 3. Crear los contenedores (child-group) en el orden correcto
+  visualGroupsOrder.forEach(groupId => {
+    // Filtramos los hijos que pertenecen a este grupo
+    let hijosDelGrupo = [];
+    
+    if (groupId === 'single') {
+        // Hijos sin idPareja o cuyo ID no está en la lista de parejas visuales
+        hijosDelGrupo = children.filter(c => !c.idPareja || (!leftPartnersIds.includes(c.idPareja) && !rightPartnersIds.includes(c.idPareja)));
+    } else {
+        hijosDelGrupo = children.filter(c => c.idPareja === groupId);
+    }
+
+    // Si no hay hijos en este grupo, no creamos el div (para no ocupar espacio invisible)
+    if (hijosDelGrupo.length === 0) return;
+
+    // Ordenamos hijos por edad
+    hijosDelGrupo.sort((a,b) => (getNum(b.edad)||0) - (getNum(a.edad)||0));
+
+    // Creamos el contenedor del grupo
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'child-group';
+    groupDiv.dataset.partnerId = groupId; // Guardamos de quién son para alinearlos luego
+
+    // Agregamos los nodos de los hijos al grupo
+    hijosDelGrupo.forEach(h => groupDiv.appendChild(crearNodo(h)));
+
+    // Agregamos el grupo al slot principal
+    hijosSlot.appendChild(groupDiv);
+  });
+
+  // Renderizado final
   requestAnimationFrame(() => {
-    alinearGenograma();
+    alinearGenograma(); // <--- Esto ahora será crucial
     requestAnimationFrame(() => {
       dibujarConexiones(); 
     });
@@ -692,78 +826,134 @@ function dibujarConexiones() {
   }
 
   // ===============================================
-  // 4) HIJOS (Adaptado para multipareja)
+  // 4) HIJOS (Sincronizado con la lógica de vecinos)
   // ===============================================
-  if (patientDom && hijosDom.length) {
+  if (patientDom && children.length > 0) {
     const cPatient = centerOf(patientDom);
-    let startX, startY;
+    
+    // Agrupar hijos
+    const gruposHijos = {};
+    gruposHijos['single'] = []; 
+    partners.forEach(p => gruposHijos[p.id] = []); 
 
-    if (activePartnerCenter) {
-      // Si hay pareja, salimos del medio entre Paciente y Pareja Activa
-      startX = (cPatient.x + activePartnerCenter.x) / 2;
-      startY = marriageY; 
-    } else {
-      // Madre/Padre soltero
-      startX = cPatient.x;
-      startY = cPatient.bottom;
-    }
+    children.forEach(child => {
+       const pid = child.idPareja;
+       if (pid && gruposHijos[pid]) gruposHijos[pid].push(child);
+       else gruposHijos['single'].push(child);
+    });
 
-    const minChildTop = Math.min(...hijosDom.map(h => centerOf(h).top));
-    const yEnd = (startY + minChildTop) / 2 + 15;
+    Object.keys(gruposHijos).forEach(partnerId => {
+        const misHijosData = gruposHijos[partnerId];
+        if (misHijosData.length === 0) return;
 
-    // Tallo vertical
-    layer.add(new Konva.Line({ points: [startX, startY, startX, yEnd], stroke: 'black', strokeWidth: 2 }));
-
-    // Barra horizontal sobre los hijos
-    const allX = hijosDom.map(h => centerOf(h).x);
-    const minX = Math.min(...allX);
-    const maxX = Math.max(...allX);
-    layer.add(new Konva.Line({ points: [minX, yEnd, maxX, yEnd], stroke: 'black', strokeWidth: 2 }));
-
-    // Bajadas individuales
-    for (let i = 0; i < hijosDom.length; i++) {
-      const hNode = hijosDom[i];
-      const hData = children.find(c => c.id === hNode.dataset.id); 
-      if (!hData) continue; 
-
-      const ch = centerOf(hNode);
-      const tipo = hData.tipoHijo || 'biologico';
-
-      // --- CASO GEMELOS / MELLIZOS ---
-      let esParejaGemelos = false;
-      if (i < hijosDom.length - 1) {
-        const nextNode = hijosDom[i+1];
-        const nextData = children.find(c => c.id === nextNode.dataset.id);
+        // A. Nodos visuales de los hijos
+        const misHijosNodes = misHijosData.map(d => 
+            hijosSlot.querySelector(`.persona[data-id="${d.id}"]`)
+        ).filter(Boolean);
         
-        if (nextData && (tipo === 'mellizo' || tipo === 'gemelo') && (nextData.tipoHijo === tipo)) {
-             esParejaGemelos = true;
-             const chNext = centerOf(nextNode);
-             
-             // Punto medio triángulo
-             const midX = (ch.x + chNext.x) / 2;
-             
-             layer.add(new Konva.Line({ points: [midX, yEnd, ch.x, ch.top], stroke: 'black', strokeWidth: 2 }));
-             layer.add(new Konva.Line({ points: [midX, yEnd, chNext.x, chNext.top], stroke: 'black', strokeWidth: 2 }));
-             
-             if (tipo === 'gemelo') {
-               const barY = (yEnd + ch.top) / 2 + 5;
-               const ratio = 0.5;
-               const x1 = midX + (ch.x - midX) * ratio;
-               const x2 = midX + (chNext.x - midX) * ratio;
-               layer.add(new Konva.Line({ points: [x1, barY, x2, barY], stroke: 'black', strokeWidth: 2 }));
-             }
-             i++; // Saltar el siguiente hermano
-             continue; 
-        }
-      }
+        if (misHijosNodes.length === 0) return;
 
-      // --- CASO NORMAL O ADOPTADO ---
-      const configLinea = { 
-        stroke: 'black', strokeWidth: 2,
-        dash: (tipo === 'adoptado') ? [5, 5] : [] 
-      };
-      layer.add(new Konva.Line({ points: [ch.x, yEnd, ch.x, ch.top], ...configLinea }));
-    }
+        // B. Calcular ORIGEN del Tallo (startX)
+        let startX, startY;
+        
+        if (partnerId === 'single') {
+            startX = cPatient.x;
+            startY = cPatient.bottom;
+        } else {
+            // Buscamos a la pareja
+            const partnerNode = partnerLeftSlot.querySelector(`.persona[data-id="${partnerId}"]`) || 
+                                partnerRightSlot.querySelector(`.persona[data-id="${partnerId}"]`);
+            
+            if (partnerNode) {
+                const cPartner = centerOf(partnerNode);
+                
+                /* --- CORRECCIÓN LÓGICA DE VECINOS (Igual que en alinearGenograma) --- */
+                // Para que la línea baje EXACTAMENTE donde pusimos a los hijos
+                let neighborX = cPatient.x; // Por defecto el vecino es el paciente
+
+                if (partnerLeftSlot.contains(partnerNode)) {
+                    // Si está a la izquierda, su vecino hacia el centro es el "siguiente"
+                    const next = partnerNode.nextElementSibling;
+                    if (next) neighborX = centerOf(next).x;
+                } 
+                else if (partnerRightSlot.contains(partnerNode)) {
+                    // Si está a la derecha, su vecino hacia el centro es el "anterior"
+                    const prev = partnerNode.previousElementSibling;
+                    if (prev) neighborX = centerOf(prev).x;
+                }
+
+                // El tallo baja del promedio entre la PAREJA y su VECINO
+                startX = (cPartner.x + neighborX) / 2;
+                /* ------------------------------------------------------------- */
+
+                startY = marriageY; 
+            } else {
+                startX = cPatient.x;
+                startY = cPatient.bottom;
+            }
+        }
+
+        // C. Calcular la Barra Horizontal
+        const minChildTop = Math.min(...misHijosNodes.map(h => centerOf(h).top));
+        // Altura de la barra
+        const yEnd = startY + (minChildTop - startY) * 0.6; 
+
+        // Límites de los hijos
+        const allChildX = misHijosNodes.map(h => centerOf(h).x);
+        let minBarX = Math.min(...allChildX);
+        let maxBarX = Math.max(...allChildX);
+
+        // Estiramiento de seguridad (Por si la física los movió un poco extra)
+        if (startX < minBarX) minBarX = startX;
+        if (startX > maxBarX) maxBarX = startX;
+
+        // D. Dibujar Tallo
+        layer.add(new Konva.Line({ points: [startX, startY, startX, yEnd], stroke: 'black', strokeWidth: 2 }));
+
+        // E. Dibujar Barra Horizontal
+        layer.add(new Konva.Line({ points: [minBarX, yEnd, maxBarX, yEnd], stroke: 'black', strokeWidth: 2 }));
+
+        // F. Bajadas individuales
+        for (let i = 0; i < misHijosNodes.length; i++) {
+            const hNode = misHijosNodes[i];
+            const hData = misHijosData[i];
+            const ch = centerOf(hNode);
+            const tipo = hData.tipoHijo || 'biologico';
+
+            // Gemelos
+            let esParejaGemelos = false;
+            if (i < misHijosNodes.length - 1) {
+                const nextNode = misHijosNodes[i+1];
+                const nextData = misHijosData[i+1];
+                if (nextData && (tipo === 'mellizo' || tipo === 'gemelo') && (nextData.tipoHijo === tipo)) {
+                    esParejaGemelos = true;
+                    const chNext = centerOf(nextNode);
+                    const midX = (ch.x + chNext.x) / 2;
+                    
+                    layer.add(new Konva.Line({ points: [midX, yEnd, ch.x, ch.top], stroke: 'black', strokeWidth: 2 }));
+                    layer.add(new Konva.Line({ points: [midX, yEnd, chNext.x, chNext.top], stroke: 'black', strokeWidth: 2 }));
+                    
+                    if (tipo === 'gemelo') {
+                         const barY = (yEnd + ch.top) / 2 + 5;
+                         const x1 = midX + (ch.x - midX) * 0.5;
+                         const x2 = midX + (chNext.x - midX) * 0.5;
+                         layer.add(new Konva.Line({ points: [x1, barY, x2, barY], stroke: 'black', strokeWidth: 2 }));
+                    }
+                    i++; 
+                    continue;
+                }
+            }
+            
+            // Normal
+            if (!esParejaGemelos) {
+                 const configLinea = { 
+                    stroke: 'black', strokeWidth: 2,
+                    dash: (tipo === 'adoptado') ? [5, 5] : [] 
+                 };
+                 layer.add(new Konva.Line({ points: [ch.x, yEnd, ch.x, ch.top], ...configLinea }));
+            }
+        }
+    });
   }
 
   layer.draw();
@@ -803,7 +993,8 @@ guardarFamiliarBtn.onclick = () => {
   const lgtbInput = document.getElementById('famLgtb');
   const tipoRelacionInput = document.getElementById('famTipoRelacion'); 
   const tipoHijoInput = document.getElementById('famTipoHijo');
-  
+  const idParejaInput = document.getElementById('famIdPareja'); // <--- NUEVO
+
   // --- NUEVO: Capturar los inputs de fecha aquí arriba ---
   const anioInicioInput = document.getElementById('relAnioInicio');
   const anioFinInput = document.getElementById('relAnioFin');
@@ -834,6 +1025,7 @@ guardarFamiliarBtn.onclick = () => {
     lgtb: lgtbInput.checked,
     tipoRelacion: tipoRelacionInput.value,
     tipoHijo: tipoHijoInput.value,
+    idPareja: (rolInput.value === 'hijo') ? idParejaInput.value : null, // <--- NUEVO: Guardamos el ID de la pareja
     // Como ya definimos 'anioInicioInput' y 'getYearVal' arriba, esto ya no dará error
     relAnioInicio: (rolInput.value === 'pareja') ? getYearVal(anioInicioInput) : null,
     relAnioFin: (rolInput.value === 'pareja') ? getYearVal(anioFinInput) : null
