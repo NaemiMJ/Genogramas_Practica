@@ -5,10 +5,13 @@
   <title>Genograma</title>
   <link rel="stylesheet" href="../style/style_geno.css">
   <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
   <h1>Genograma</h1>
   <button id="btnGuardarDB" class="btn-save">💾 Guardar Cambios</button>
+  <button id="btnExportarPDF" class="btn-save" style="margin-left:10px; background-color:#e74c3c;">📄 Exportar PDF</button>
 
   <div class="form-wrapper" id="formPaciente">
     <h3>Agregar paciente</h3>
@@ -29,7 +32,16 @@
   <div class="genograma-container">
     <div id="conexiones"></div>
 
-    <div class="genograma">
+    <div class="fila ancentros" id="bisabuelos" style="margin-bottom: 40px; min-height:80px; display:flex; justify-content:center; gap:60px;">
+        <div id="bisabuelos-paternos" style="display:flex; gap:20px; justify-content:flex-end;"></div>
+        <div id="bisabuelos-maternos" style="display:flex; gap:20px; justify-content:flex-start;"></div>
+      </div>
+      
+      <div class="fila ancentros" id="abuelos" style="margin-bottom: 40px; min-height:80px; display:flex; justify-content:center; gap:60px;">
+         <div id="abuelos-paternos" style="display:flex; gap:20px; justify-content:flex-end;"></div>
+         <div id="abuelos-maternos" style="display:flex; gap:20px; justify-content:flex-start;"></div>
+      </div>
+
       <div class="fila padres" id="padres">
         <div class="parent-slot" id="padre-slot"></div>
         <div class="parent-slot" id="madre-slot"></div>
@@ -37,17 +49,19 @@
 
       <div class="fila middle-row" id="middle">
         <div class="pareja-slot" id="partner-left-slot"></div>
-
         <div class="center-block" id="center-block">
           <div class="hermanos left" id="hermanos-left"></div>
           <div class="paciente-slot" id="paciente-slot"></div>
           <div class="hermanos right" id="hermanos-right"></div>
         </div>
-
         <div class="pareja-slot" id="partner-right-slot"></div>
       </div>
 
-      <div class="fila hijos" id="hijos"></div>
+      <div class="fila hijos" id="hijos" style="margin-top: 40px;"></div>
+
+      <div class="fila nietos" id="nietos" style="margin-top: 40px; min-height:80px; display:flex; justify-content:center; gap:20px;"></div>
+      
+       <div class="fila bisnietos" id="bisnietos" style="margin-top: 40px; min-height:80px; display:flex; justify-content:center; gap:20px;"></div>
     </div>
   </div>
 
@@ -57,21 +71,33 @@
       <label>Nombre: <input type="text" id="famNombre" /></label>
       <label>Apellido: <input type="text" id="famApellido" /></label>
       <label>Edad: <input type="number" id="famEdad" min="0" /></label>
+      
       <label>Sexo:
         <select id="famSexo">
           <option value="M">Masculino</option>
           <option value="F">Femenino</option>
         </select>
       </label>
+
       <label>Rol:
         <select id="famRol">
+          <option value="bisabuelo">Bisabuelo/a</option>
+          <option value="abuelo">Abuelo/a</option>
           <option value="padre">Padre/Madre</option>
-          <option value="pareja">Pareja</option>
+          <option value="pareja">Pareja (del Paciente)</option>
           <option value="hermano">Hermano/a</option>
           <option value="hijo">Hijo/a</option>
+          <option value="nieto">Nieto/a</option>
+          <option value="bisnieto">Bisnieto/a</option>
+          <option value="pareja_descendiente">Pareja de Descendiente</option>
         </select>
       </label>
-      
+
+      <div id="divTargetId" style="display:none; margin-top:8px; background:#eef; padding:5px;">
+        <label id="lblTargetId">Vincular con:</label>
+        <select id="famTargetId" style="width:100%"></select>
+      </div>
+        
       <div id="divTipoHijo" style="display:none; margin-top:8px;">
         <label>Tipo de Hijo:
           <select id="famTipoHijo" style="width:100%">
@@ -83,22 +109,17 @@
         </label>
       </div>
 
-      <div id="divSelectPareja" style="display:none; margin-top:8px;">
-        <label>Otro Progenitor (Pareja):
-          <select id="famIdPareja" style="width:100%">
-            </select>
-        </label>
-      </div>
-
       <label>Salud / Problemas:
         <select id="famSalud" style="width:100%">
           <option value="ninguno">Ninguno</option>
           <option value="abuso">Abuso Alcohol/Drogas</option>
-          <option value="ingreso">Ingreso / Recuperación</option> <option value="sospecha">Sospecha de Abuso</option>
+          <option value="ingreso">Ingreso / Recuperación</option> 
+          <option value="sospecha">Sospecha de Abuso</option>
           <option value="mental">Prob. Mentales / Psicológicos</option>
           <option value="ambos">Comorbilidad (Abuso + Mental)</option>
         </select>
       </label>
+
       <label>Estado Vital:
         <select id="famEstado" style="width:100%">
           <option value="vivo">Vivo</option>
@@ -109,10 +130,12 @@
           <option value="aborto_prov">Aborto Provocado</option>
         </select>
       </label>
+
       <label style="display:inline-flex; align-items:center; gap:5px; margin-top:5px;">
         <input type="checkbox" id="famLgtb" /> 
         LGTBIQ+
       </label>
+
       <div id="lblDivorcio" style="display:none; margin-top:8px;">
         <label>Estado de la Relación:
           <select id="famTipoRelacion" style="width:100%">
@@ -120,9 +143,11 @@
             <option value="de_hecho">Pareja de hecho / Amante</option>
             <option value="separacion">Separación</option>
             <option value="divorcio">Divorcio</option>
-            <option value="reconciliacion">Reconciliación tras Divorcio</option> </select>
+            <option value="reconciliacion">Reconciliación tras Divorcio</option> 
+          </select>
         </label>
       </div>
+
       <div id="bloqueFechasRelacion" style="display:none; margin-top:8px; padding:10px; background:#f0f0f0; border-radius:4px;">
         <label style="font-weight:bold;">Cronología de la Relación:</label>
         <div style="display:flex; gap:10px; margin-top:5px;">
@@ -145,6 +170,7 @@
 
   <div id="menuAcciones" class="menu-acciones oculto">
     <button id="menuAgregar">Agregar familiar</button>
+    <button id="menuModificar">Modificar</button>
     <button id="menuEliminar">Eliminar</button>
     <button onclick="cerrarMenu()">Cerrar</button>
   </div>
@@ -155,9 +181,16 @@ function uid(){ return Date.now().toString(36) + Math.random().toString(36).slic
 
 let patient = null;
 let parents = { father: null, mother: null };
-let partners = []; // Ahora es una lista vacía
+let partners = []; 
 let siblings = [];
 let children = [];
+// NUEVOS ARRAYS
+let grandparents = [];      // Abuelos (linked to parents)
+let greatGrandparents = []; // Bisabuelos (linked to grandparents)
+let grandchildren = [];     // Nietos (linked to children)
+let greatGrandchildren = [];// Bisnietos (linked to grandchildren)
+let descendantPartners = [];// Parejas de hijos/nietos
+
 let seleccionado = null;
 
 /* ========== Selectores DOM ========== */
@@ -179,6 +212,8 @@ const menu = document.getElementById('menuAcciones');
 const menuAgregarBtn = document.getElementById('menuAgregar');
 const menuEliminarBtn = document.getElementById('menuEliminar');
 const formFamiliar = document.getElementById('formFamiliar');
+const menuModificarBtn = document.getElementById('menuModificar'); // NUEVO
+let modoEdicion = false; // NUEVO: Controla si guardamos o editamos
 const guardarFamiliarBtn = document.getElementById('guardarFamiliarBtn');
 
 const famRolSelect = document.getElementById('famRol');
@@ -206,46 +241,95 @@ function toggleDivorcioOption() {
   }
 }
 
-/* --- MODIFICAR: Listener unificado para cambios de ROL --- */
+/* --- LÓGICA DE FORMULARIO DINÁMICO --- */
+const divTargetId = document.getElementById('divTargetId');
+const lblTargetId = document.getElementById('lblTargetId');
+const famTargetId = document.getElementById('famTargetId');
+
 famRolSelect.addEventListener('change', () => {
   const rol = famRolSelect.value;
+  divTargetId.style.display = 'none';
+  famTargetId.innerHTML = '';
+  document.getElementById('divTipoHijo').style.display = 'none';
   
-  // 1. Lógica de Pareja
-  toggleDivorcioOption();
-  
-  // 2. Lógica de Estados
-  filtrarOpcionesEstado();
-
-  // 3. Lógica de Hijos (Tipo y Pareja)
-  const divTipoHijo = document.getElementById('divTipoHijo');
-  const divSelectPareja = document.getElementById('divSelectPareja');
-  const selectPareja = document.getElementById('famIdPareja');
-  const tipoHijoInput = document.getElementById('famTipoHijo');
-  
-  if (rol === 'hijo') {
-    divTipoHijo.style.display = 'block';
-    divSelectPareja.style.display = 'block';
-
-    // Llenar select con parejas actuales
-    selectPareja.innerHTML = '<option value="">-- Desconocido / Solo Paciente --</option>';
-    partners.forEach(p => {
-      const option = document.createElement('option');
-      option.value = p.id;
-      // Muestra nombre o "Pareja" si no tiene nombre
-      option.textContent = p.nombre ? p.nombre : 'Pareja sin nombre'; 
-      selectPareja.appendChild(option);
-    });
-
-  } else {
-    divTipoHijo.style.display = 'none';
-    divSelectPareja.style.display = 'none';
-    tipoHijoInput.value = 'biologico';
-    selectPareja.innerHTML = '';
+  // 1. ABUELOS: Seleccionar a qué PADRE pertenecen
+  if (rol === 'abuelo') {
+    divTargetId.style.display = 'block';
+    lblTargetId.textContent = '¿Es padre/madre de quién? (Selecciona un Padre):';
+    if(parents.father) agregarOpcion(parents.father);
+    if(parents.mother) agregarOpcion(parents.mother);
   }
+  
+  // 2. BISABUELOS: Seleccionar a qué ABUELO pertenecen
+  else if (rol === 'bisabuelo') {
+    divTargetId.style.display = 'block';
+    lblTargetId.textContent = '¿Es padre/madre de quién? (Selecciona un Abuelo):';
+    grandparents.forEach(p => agregarOpcion(p));
+  }
+
+  // 3. HIJOS: Seleccionar quién es el otro progenitor (Pareja del paciente)
+  else if (rol === 'hijo') {
+    document.getElementById('divTipoHijo').style.display = 'block';
+    divTargetId.style.display = 'block';
+    lblTargetId.textContent = 'Otro Progenitor (Pareja del Paciente):';
+    famTargetId.innerHTML = '<option value="">-- Desconocido / Solo Paciente --</option>';
+    partners.forEach(p => agregarOpcion(p));
+  }
+
+  // 4. NIETOS: Seleccionar quién es su padre (Uno de tus HIJOS)
+  else if (rol === 'nieto') {
+    document.getElementById('divTipoHijo').style.display = 'block'; // Opcional si quieres mellizos en nietos
+    divTargetId.style.display = 'block';
+    lblTargetId.textContent = '¿Hijo de quién? (Selecciona un Hijo):';
+    children.forEach(p => agregarOpcion(p));
+  }
+
+  // 5. BISNIETOS: Seleccionar quién es su padre (Uno de tus NIETOS)
+  else if (rol === 'bisnieto') {
+    divTargetId.style.display = 'block';
+    lblTargetId.textContent = '¿Hijo de quién? (Selecciona un Nieto):';
+    grandchildren.forEach(p => agregarOpcion(p));
+  }
+
+  // 6. PAREJA DE DESCENDIENTE: Para darle esposa/esposo a un hijo o nieto
+  else if (rol === 'pareja_descendiente') {
+    divTargetId.style.display = 'block';
+    lblTargetId.textContent = '¿Pareja de quién?';
+    // Agregamos Hijos y Nietos a la lista
+    const optGroupHijos = document.createElement('optgroup'); optGroupHijos.label = "Hijos";
+    children.forEach(c => {
+       const o = document.createElement('option'); o.value=c.id; o.textContent=c.nombre; optGroupHijos.appendChild(o);
+    });
+    famTargetId.appendChild(optGroupHijos);
+
+    const optGroupNietos = document.createElement('optgroup'); optGroupNietos.label = "Nietos";
+    grandchildren.forEach(c => {
+       const o = document.createElement('option'); o.value=c.id; o.textContent=c.nombre; optGroupNietos.appendChild(o);
+    });
+    famTargetId.appendChild(optGroupNietos);
+    
+    // Mostramos opciones de divorcio/fechas
+    toggleDivorcioOption(); 
+  }
+
+  // Lógica para mostrar fechas si es pareja directa o de descendiente
+  if (rol === 'pareja' || rol === 'pareja_descendiente') toggleDivorcioOption();
+  else { 
+      document.getElementById('lblDivorcio').style.display='none'; 
+      document.getElementById('bloqueFechasRelacion').style.display='none';
+  }
+  
+  filtrarOpcionesEstado();
 });
 
+function agregarOpcion(persona) {
+    const option = document.createElement('option');
+    option.value = persona.id;
+    option.textContent = persona.nombre + ' ' + (persona.apellido||'');
+    famTargetId.appendChild(option);
+}
 
-/* --- LÓGICA: FILTRAR ESTADOS SEGÚN ROL --- */
+
 /* --- LÓGICA: FILTRAR ESTADOS SEGÚN ROL --- */
 const famEstadoSelect = document.getElementById('famEstado');
 
@@ -505,15 +589,432 @@ function getCenterX(el) {
     return r.left + r.width / 2; 
 }
 
+/* --- ALINEACIÓN DE ANCESTROS (Abuelos sobre Padres) --- */
+function alinearAncestros() {
+  // 1. Alinear Abuelos respecto a los Padres
+  alinearNivel('abuelos');
+  
+  // 2. Alinear Bisabuelos respecto a los Abuelos
+  // (Nota: Esto debe ejecutarse después para tener en cuenta el movimiento de los abuelos)
+  requestAnimationFrame(() => {
+      alinearNivel('bisabuelos');
+  });
+}
+
+/* --- AUTO-SEPARACIÓN DE ABUELOS (Para que quepan los Bisabuelos) --- */
+function ajustarSeparacionAbuelos() {
+  // Buscamos todos los grupos de abuelos (ej: padres del padre, padres de la madre)
+  const gruposAbuelos = document.querySelectorAll('#abuelos .ancestor-group');
+  
+  gruposAbuelos.forEach(grupo => {
+     const personas = Array.from(grupo.children);
+     if (personas.length < 2) return; // Si es solo uno, no hay choque posible
+
+     // Calculamos el gap necesario entre cada par de personas (Abuelo - Abuela)
+     let maxGap = 20; // Gap mínimo visual
+
+     for(let i=0; i < personas.length - 1; i++) {
+         const p1 = personas[i];
+         const p2 = personas[i+1];
+         
+         // Buscar sus bisabuelos correspondientes (padres de p1 y padres de p2)
+         const bis1 = document.querySelector(`#bisabuelos .ancestor-group[data-child-id="${p1.dataset.id}"]`);
+         const bis2 = document.querySelector(`#bisabuelos .ancestor-group[data-child-id="${p2.dataset.id}"]`);
+
+         // Medimos el ancho de los grupos de bisabuelos (si existen)
+         const w1 = bis1 ? bis1.getBoundingClientRect().width : 0;
+         const w2 = bis2 ? bis2.getBoundingClientRect().width : 0;
+         
+         // Lógica Geométrica:
+         // Necesitamos que la distancia entre los centros de p1 y p2 sea suficiente
+         // para que sus "techos" (ramas de bisabuelos) no choquen.
+         // EspacioRequerido = (MitadRama1 + MitadRama2) + Margen
+         const margen = 20;
+         const espacioRamas = (w1 / 2) + (w2 / 2) + margen; 
+         
+         // Convertimos esa distancia entre centros a "gap" (espacio vacío entre bordes)
+         const p1w = p1.getBoundingClientRect().width;
+         const p2w = p2.getBoundingClientRect().width;
+         const espacioCuerpos = (p1w / 2) + (p2w / 2);
+         
+         const gapNecesario = espacioRamas - espacioCuerpos;
+         
+         if (gapNecesario > maxGap) maxGap = gapNecesario;
+     }
+
+     // Aplicamos el nuevo gap al contenedor de estos abuelos
+     grupo.style.gap = `${maxGap}px`;
+  });
+}
+
+/* --- AUTO-SEPARACIÓN DE PADRES (Evita choques de abuelos) --- */
+function ajustarSeparacionPadres() {
+    const padresContainer = document.getElementById('padres');
+    
+    // 1. Obtener contenedores de ancestros
+    const pContainer = document.getElementById('abuelos-paternos');
+    const mContainer = document.getElementById('abuelos-maternos');
+    const bpContainer = document.getElementById('bisabuelos-paternos');
+    const bmContainer = document.getElementById('bisabuelos-maternos');
+
+    // Función auxiliar para medir el ancho real visual de un grupo
+    const getRealWidth = (container) => {
+        if (!container || container.children.length === 0) return 0;
+        // Medimos la distancia desde el borde izquierdo del primer elemento 
+        // hasta el borde derecho del último elemento
+        const first = container.firstElementChild.getBoundingClientRect();
+        const last = container.lastElementChild.getBoundingClientRect();
+        return last.right - first.left;
+    };
+
+    // 2. Calcular ancho máximo de cada "Rama" (Paterna vs Materna)
+    const wRamaPaterna = Math.max(getRealWidth(pContainer), getRealWidth(bpContainer));
+    const wRamaMaterna = Math.max(getRealWidth(mContainer), getRealWidth(bmContainer));
+
+    // 3. Aplicar Gap Dinámico
+    // Si tenemos ancestros, calculamos cuánto espacio necesitan
+    if (wRamaPaterna > 0 || wRamaMaterna > 0) {
+        const margenSeguridad = 40; 
+        const anchoPadreEstimado = 100; // Ancho aprox de la tarjeta del padre
+        
+        // Fórmula geométrica: 
+        // Distancia necesaria = (MitadRamaIzq + MitadRamaDer) + Margen
+        // Gap a aplicar = DistanciaNecesaria - AnchoDelPadreCentral
+        const espacioNecesario = (wRamaPaterna / 2) + (wRamaMaterna / 2) + margenSeguridad;
+        
+        const nuevoGap = Math.max(40, espacioNecesario - anchoPadreEstimado);
+        
+        padresContainer.style.gap = `${nuevoGap}px`;
+    } else {
+        // Si no hay ancestros, gap standard
+        padresContainer.style.gap = '40px'; 
+    }
+}
+
+/* --- ALINEACIÓN EXACTA: PADRES -> PACIENTE (CORREGIDA) --- */
+function alinearPadresExactamente() {
+  const patientNode = document.querySelector('#paciente-slot .persona');
+  const padresRow = document.getElementById('padres');
+  
+  // 1. IMPORTANTE: Resetear transformación previa para medir la posición "natural"
+  padresRow.style.transform = ''; 
+  
+  if (!patientNode || (!parents.father && !parents.mother)) return;
+
+  // 2. Encontrar el centro objetivo (El centro del Paciente)
+  const rectPatient = patientNode.getBoundingClientRect();
+  const targetX = rectPatient.left + rectPatient.width / 2;
+
+  // 3. Encontrar el centro "natural" de los Padres (donde los puso el CSS)
+  let currentParentX = 0;
+  const fatherNode = document.querySelector('#padre-slot .persona');
+  const motherNode = document.querySelector('#madre-slot .persona');
+
+  if (fatherNode && motherNode) {
+      // Centro promedio entre los dos
+      const rF = fatherNode.getBoundingClientRect();
+      const rM = motherNode.getBoundingClientRect();
+      const centerF = rF.left + rF.width / 2;
+      const centerM = rM.left + rM.width / 2;
+      currentParentX = (centerF + centerM) / 2;
+  } 
+  else if (fatherNode) {
+      const r = fatherNode.getBoundingClientRect();
+      currentParentX = r.left + r.width / 2;
+  } 
+  else if (motherNode) {
+      const r = motherNode.getBoundingClientRect();
+      currentParentX = r.left + r.width / 2;
+  } else {
+      return; 
+  }
+
+  // 4. Calcular la diferencia y mover
+  const delta = targetX - currentParentX;
+  
+  // Solo aplicamos si la diferencia es notable (evita micro-movimientos borrosos)
+  if (Math.abs(delta) > 0.5) {
+      padresRow.style.transform = `translateX(${delta}px)`;
+  }
+}
+
+function alinearHijosConPadres() {
+  // Función auxiliar para mover un bloque de familia
+  const moverFamilia = (familyDiv, centroPadres) => {
+      // 1. En lugar de usar el centro de todo el div, buscamos el centro de los HIJOS BIOLÓGICOS
+      // Identificamos a los hijos biológicos filtrando aquellos que NO son parejas de descendientes
+      const personasEnGrupo = Array.from(familyDiv.querySelectorAll('.persona'));
+      
+      // Filtramos: Nos quedamos con los que NO están en la lista de 'partners' externos
+      // (Es decir, los hijos de sangre de la generación anterior)
+      const hijosBio = personasEnGrupo.filter(dom => {
+         const id = dom.dataset.id;
+         // Si el ID existe en descendantPartners, es un agregado (nuera/yerno), lo ignoramos para el centro
+         return !descendantPartners.some(dp => dp.id === id);
+      });
+
+      if (hijosBio.length === 0) return; // Si no hay hijos bio, no hacemos nada
+
+      // 2. Calculamos el centro visual del grupo de hijos biológicos
+      const firstBio = hijosBio[0].getBoundingClientRect();
+      const lastBio = hijosBio[hijosBio.length - 1].getBoundingClientRect();
+      const centroBio = (firstBio.left + lastBio.right) / 2;
+
+      // 3. Calculamos la diferencia respecto al padre superior
+      const delta = centroPadres - centroBio;
+
+      if (Math.abs(delta) > 1) {
+          // Movemos TODO el bloque (incluyendo a la pareja), pero basado en la posición del hijo
+          const currentTransform = new WebKitCSSMatrix(window.getComputedStyle(familyDiv).transform);
+          familyDiv.style.transform = `translateX(${currentTransform.m41 + delta}px)`;
+      }
+  };
+
+  // 1. ALINEAR HIJOS DEL PACIENTE
+  const bloquesHijos = document.querySelectorAll('#hijos .nuclear-family');
+  bloquesHijos.forEach(familyDiv => {
+      const partnerId = familyDiv.dataset.partnerId;
+      let centroPadres = 0;
+      
+      const patientNode = pacienteSlot.querySelector('.persona');
+      if (!patientNode) return;
+      const cPatient = getCenterX(patientNode);
+
+      if (partnerId === 'single') {
+          centroPadres = cPatient;
+      } else {
+          const partnerNode = document.querySelector(`.persona[data-id="${partnerId}"]`);
+          if (partnerNode) {
+              // Lógica de vecinos
+              let neighborX = cPatient;
+              if (partnerLeftSlot.contains(partnerNode)) {
+                   const next = partnerNode.nextElementSibling;
+                   if(next) neighborX = getCenterX(next);
+              } else if (partnerRightSlot.contains(partnerNode)) {
+                   const prev = partnerNode.previousElementSibling;
+                   if(prev) neighborX = getCenterX(prev);
+              }
+              centroPadres = (getCenterX(partnerNode) + neighborX) / 2;
+          } else {
+              centroPadres = cPatient;
+          }
+      }
+      moverFamilia(familyDiv, centroPadres);
+  });
+
+  // 2. ALINEAR NIETOS Y BISNIETOS
+  descendantPartners.forEach(pareja => {
+      const idBio = pareja.targetId; // Hijo Biológico
+      const idPareja = pareja.id;    // Nuera/Yerno (clave del grupo)
+      
+      // Buscamos la familia nuclear que corresponde a esta pareja
+      const familyDiv = document.querySelector(`.nuclear-family[data-partner-id="${idPareja}"]`);
+      
+      if (familyDiv) {
+          // El "Padre Superior" es el centro entre el Hijo Biológico y su Pareja
+          const nodoBio = document.querySelector(`.persona[data-id="${idBio}"]`);
+          const nodoPareja = document.querySelector(`.persona[data-id="${idPareja}"]`);
+          
+          if (nodoBio && nodoPareja) {
+              const c1 = getCenterX(nodoBio);
+              const c2 = getCenterX(nodoPareja);
+              const centroPadres = (c1 + c2) / 2;
+              
+              moverFamilia(familyDiv, centroPadres);
+          }
+      }
+  });
+}
+
+/* --- NUEVA ALINEACIÓN: CENTRAR HIJOS BAJO EL MATRIMONIO --- */
+function alinearDescendenciaConPareja(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const bloquesFamilia = container.querySelectorAll('.nuclear-family');
+
+  bloquesFamilia.forEach(bloque => {
+      // 1. IMPORTANTE: Reseteamos la posición antes de medir nada.
+      // Esto elimina "fantasmas" de movimientos anteriores y nos da la posición real natural.
+      bloque.style.transform = '';
+
+      const idPareja = bloque.dataset.partnerId;
+      
+      // Si el grupo es 'single' (hijos de padre soltero/divorciado sin pareja actual visible),
+      // deberíamos alinearlos con ese único padre.
+      if (idPareja === 'single') {
+         // Lógica opcional: si quieres alinear nietos de madre soltera, 
+         // habría que buscar quién es el padre/madre biológico de estos niños.
+         // Por simplicidad, nos enfocamos en el fallo actual (parejas).
+         return; 
+      }
+
+      // Buscamos la pareja (nuera/yerno)
+      const relacion = descendantPartners.find(r => r.id === idPareja);
+      
+      if (relacion) {
+          const idBio = relacion.targetId; 
+          const nodoBio = document.querySelector(`.persona[data-id="${idBio}"]`);
+          const nodoPareja = document.querySelector(`.persona[data-id="${idPareja}"]`);
+
+          if (nodoBio && nodoPareja) {
+              // 2. DÓNDE DEBEN ESTAR (META): Centro visual del Matrimonio
+              const rBio = nodoBio.getBoundingClientRect();
+              const rPareja = nodoPareja.getBoundingClientRect();
+              const centroMatrimonio = (rBio.left + rBio.width/2 + rPareja.left + rPareja.width/2) / 2;
+
+              // 3. DÓNDE ESTÁN AHORA (REALIDAD): Centro visual del bloque de nietos (tras el reset)
+              // Medimos las tarjetas internas para ignorar márgenes vacíos del div
+              const hijosNodos = Array.from(bloque.querySelectorAll('.persona'));
+              
+              if (hijosNodos.length > 0) {
+                  const firstChild = hijosNodos[0].getBoundingClientRect();
+                  const lastChild = hijosNodos[hijosNodos.length - 1].getBoundingClientRect();
+                  
+                  // Centro visual real del grupo de hijos
+                  const centroHijosActual = (firstChild.left + lastChild.right) / 2;
+
+                  // 4. CÁLCULO FINAL
+                  const delta = centroMatrimonio - centroHijosActual;
+
+                  // Aplicamos la corrección exacta
+                  bloque.style.transform = `translateX(${delta}px)`;
+              }
+          }
+      }
+  });
+}
+
+function alinearNivel(idNivel) {
+  const container = document.getElementById(idNivel);
+  const grupos = container.querySelectorAll('.ancestor-group');
+
+  grupos.forEach(grupo => {
+    // A quién pertenece este grupo de ancestros (ID del hijo)
+    const childId = grupo.dataset.childId; 
+    
+    // Buscar al hijo visualmente en todo el genograma
+    const hijoNode = document.querySelector(`.persona[data-id="${childId}"]`);
+    
+    if (hijoNode) {
+      const rectHijo = hijoNode.getBoundingClientRect();
+      const rectGrupo = grupo.getBoundingClientRect();
+      
+      // Calcular centros
+      const centerHijo = rectHijo.left + rectHijo.width / 2;
+      const centerGrupo = rectGrupo.left + rectGrupo.width / 2;
+      
+      // Diferencia a mover
+      const deltaX = centerHijo - centerGrupo;
+      
+      // Aplicar transformación
+      grupo.style.transform = `translateX(${deltaX}px)`;
+    }
+  });
+}
+
 /* ========== Renderizar ========== */
 function render() {
+  // 1. LIMPIEZA DE SLOTS
+  // (Limpiamos los nuevos sub-contenedores)
+  document.getElementById('bisabuelos-paternos').innerHTML = '';
+  document.getElementById('bisabuelos-maternos').innerHTML = '';
+  document.getElementById('abuelos-paternos').innerHTML = '';
+  document.getElementById('abuelos-maternos').innerHTML = '';
+  
+  document.getElementById('nietos').innerHTML = '';
+  document.getElementById('bisnietos').innerHTML = '';
+  
   padreSlot.innerHTML = ''; madreSlot.innerHTML = '';
   partnerLeftSlot.innerHTML = ''; partnerRightSlot.innerHTML = '';
   hermanosLeft.innerHTML = ''; hermanosRight.innerHTML = '';
   pacienteSlot.innerHTML = ''; hijosSlot.innerHTML = '';
 
+  // --- RENDERIZAR ANCESTROS (Lógica Dividida) ---
+  
+  // Función auxiliar para crear grupos visuales
+  function crearGruposAncestros(listaPersonas, slotDestino) {
+      const slot = document.getElementById(slotDestino);
+      const groups = {};
+      
+      // Agrupar por hijo (targetId)
+      listaPersonas.forEach(p => {
+          if(!groups[p.targetId]) groups[p.targetId] = [];
+          groups[p.targetId].push(p);
+      });
+
+      Object.keys(groups).forEach(targetId => {
+          const groupDiv = document.createElement('div');
+          groupDiv.className = 'ancestor-group';
+          groupDiv.style.cssText = "display:flex; gap:10px; align-items:center;";
+          groupDiv.dataset.childId = targetId; 
+
+          groups[targetId].forEach(p => groupDiv.appendChild(crearNodo(p)));
+          slot.appendChild(groupDiv);
+      });
+  }
+
+  // A. CLASIFICAR ABUELOS (Paternos vs Maternos)
+  const abuelosPaternos = [];
+  const abuelosMaternos = [];
+
+  grandparents.forEach(abuelo => {
+     // Si su hijo es MI PADRE -> Lado Paterno
+     if (parents.father && abuelo.targetId === parents.father.id) {
+         abuelosPaternos.push(abuelo);
+     } 
+     // Si su hijo es MI MADRE -> Lado Materno
+     else if (parents.mother && abuelo.targetId === parents.mother.id) {
+         abuelosMaternos.push(abuelo);
+     }
+     // Si el padre fue borrado pero quedó el abuelo huérfano, 
+     // lo mandamos a paternos por defecto o lo ocultamos según prefieras.
+     // Aquí los dejamos en paternos para no perderlos visualmente.
+     else {
+         abuelosPaternos.push(abuelo); 
+     }
+  });
+
+  crearGruposAncestros(abuelosPaternos, 'abuelos-paternos');
+  crearGruposAncestros(abuelosMaternos, 'abuelos-maternos');
+
+  // B. CLASIFICAR BISABUELOS (Lado Paterno vs Materno)
+  // La lógica es: ¿El hijo de este bisabuelo está en la lista de 'abuelosPaternos'?
+  const idsAbuelosPaternos = abuelosPaternos.map(a => a.id);
+  
+  const bisabuelosPaternos = [];
+  const bisabuelosMaternos = [];
+
+  greatGrandparents.forEach(bis => {
+      if (idsAbuelosPaternos.includes(bis.targetId)) {
+          bisabuelosPaternos.push(bis);
+      } else {
+          bisabuelosMaternos.push(bis);
+      }
+  });
+
+  crearGruposAncestros(bisabuelosPaternos, 'bisabuelos-paternos');
+  crearGruposAncestros(bisabuelosMaternos, 'bisabuelos-maternos');
+
+  /* --- RENDER PADRES (Con lógica de "Empuje/Centrado") --- */
+  // 1. Limpieza
+  padreSlot.innerHTML = ''; 
+  madreSlot.innerHTML = '';
+  
+  // 2. Renderizado
   if (parents.father) padreSlot.appendChild(crearNodo(parents.father));
   if (parents.mother) madreSlot.appendChild(crearNodo(parents.mother));
+
+  // 3. LOGICA DE EMPUJE: Ocultar el slot vacío para que el otro se centre
+  // Si no hay padre, ocultamos su slot (display: none). Si hay, lo mostramos (block).
+  padreSlot.style.display = parents.father ? 'block' : 'none';
+  madreSlot.style.display = parents.mother ? 'block' : 'none';
+
+  // Aseguramos estilos al contenedor padre para que el centrado funcione
+  const padresContainer = document.getElementById('padres');
+  padresContainer.style.display = 'flex';
+  padresContainer.style.justifyContent = 'center'; // Clave: centra lo que quede visible
+  padresContainer.style.gap = '40px'; // Espacio entre ellos cuando estén los dos
 
   if (!patient) {
     siblings.sort((a,b) => (getNum(b.edad)||0) - (getNum(a.edad)||0)).forEach(s => hermanosRight.appendChild(crearNodo(s)));
@@ -596,42 +1097,114 @@ function render() {
   // 'single' representa hijos solo del paciente (sin pareja conocida o seleccionada)
   const visualGroupsOrder = [...leftPartnersIds, 'single', ...rightPartnersIds];
 
-  // 3. Crear los contenedores (child-group) en el orden correcto
-  visualGroupsOrder.forEach(groupId => {
-    // Filtramos los hijos que pertenecen a este grupo
-    let hijosDelGrupo = [];
+/* --- FUNCIÓN HELPER: Renderizar por Familias Nucleares --- */
+function renderizarGeneracion(listaPersonas, contenedorId) {
+    const contenedor = document.getElementById(contenedorId);
+    contenedor.innerHTML = '';
     
-    if (groupId === 'single') {
-        // Hijos sin idPareja o cuyo ID no está en la lista de parejas visuales
-        hijosDelGrupo = children.filter(c => !c.idPareja || (!leftPartnersIds.includes(c.idPareja) && !rightPartnersIds.includes(c.idPareja)));
-    } else {
-        hijosDelGrupo = children.filter(c => c.idPareja === groupId);
-    }
+    // Configuración del contenedor principal de la generación
+    contenedor.style.display = 'flex';
+    contenedor.style.justifyContent = 'center';
+    contenedor.style.alignItems = 'flex-start';
+    contenedor.style.gap = '80px'; // Separación grande entre grupos de primos (familias distintas)
 
-    // Si no hay hijos en este grupo, no creamos el div (para no ocupar espacio invisible)
-    if (hijosDelGrupo.length === 0) return;
-
-    // Ordenamos hijos por edad
-    hijosDelGrupo.sort((a,b) => (getNum(b.edad)||0) - (getNum(a.edad)||0));
-
-    // Creamos el contenedor del grupo
-    const groupDiv = document.createElement('div');
-    groupDiv.className = 'child-group';
-    groupDiv.dataset.partnerId = groupId; // Guardamos de quién son para alinearlos luego
-
-    // Agregamos los nodos de los hijos al grupo
-    hijosDelGrupo.forEach(h => groupDiv.appendChild(crearNodo(h)));
-
-    // Agregamos el grupo al slot principal
-    hijosSlot.appendChild(groupDiv);
-  });
-
-  // Renderizado final
-  requestAnimationFrame(() => {
-    alinearGenograma(); // <--- Esto ahora será crucial
-    requestAnimationFrame(() => {
-      dibujarConexiones(); 
+    // 1. AGRUPAR POR PAREJA DE PADRES (Para manejar primos/hermanastros correctamente)
+    const gruposFamiliares = {};
+    
+    listaPersonas.forEach(p => {
+        // Usamos el ID de la pareja (o 'single' si es soltero/desconocido) como clave
+        const key = p.idPareja || 'single';
+        if (!gruposFamiliares[key]) gruposFamiliares[key] = [];
+        gruposFamiliares[key].push(p);
     });
+
+    // 2. RENDERIZAR CADA FAMILIA NUCLEAR
+    Object.keys(gruposFamiliares).forEach(partnerId => {
+        const hijosFamilia = gruposFamiliares[partnerId];
+        
+        // A. Crear el Contenedor de la Familia (Nuclear Family Wrapper)
+        const familyUnit = document.createElement('div');
+        familyUnit.className = 'nuclear-family'; // CLASE CLAVE PARA LA ALINEACIÓN
+        familyUnit.dataset.partnerId = partnerId; // Metadato para encontrar a los padres
+        
+        familyUnit.style.display = 'flex';
+        familyUnit.style.alignItems = 'center';
+        
+        // B. Crear los 3 Bloques Internos (Izquierda - Centro - Derecha)
+        const leftPartners = document.createElement('div'); // Yernos
+        leftPartners.style.display = 'flex';
+        leftPartners.style.gap = '10px';
+        leftPartners.style.marginRight = '40px'; // Separación Parejas-Hermanos
+
+        const siblingsCenter = document.createElement('div'); // Hermanos
+        siblingsCenter.style.display = 'flex';
+        siblingsCenter.style.gap = '10px'; // Hermanos pegaditos
+
+        const rightPartners = document.createElement('div'); // Nueras
+        rightPartners.style.display = 'flex';
+        rightPartners.style.gap = '10px';
+        rightPartners.style.marginLeft = '40px'; // Separación Hermanos-Parejas
+
+        // C. Ordenar y Distribuir
+        // Ordenamos hermanos por edad
+        hijosFamilia.sort((a,b) => (getNum(b.edad)||0) - (getNum(a.edad)||0));
+
+        hijosFamilia.forEach(hijo => {
+            // 1. El hijo SIEMPRE va al centro
+            siblingsCenter.appendChild(crearNodo(hijo));
+
+            // 2. Su pareja va a los extremos
+            const suPareja = descendantPartners.find(dp => dp.targetId === hijo.id);
+            if (suPareja) {
+                if (suPareja.sexo === 'M') {
+                    // Pareja Hombre -> Izquierda
+                    leftPartners.appendChild(crearNodo(suPareja));
+                } else {
+                    // Pareja Mujer -> Derecha
+                    rightPartners.appendChild(crearNodo(suPareja));
+                }
+            }
+        });
+
+        // D. Ensamblar solo si hay contenido
+        if (leftPartners.children.length > 0) familyUnit.appendChild(leftPartners);
+        familyUnit.appendChild(siblingsCenter);
+        if (rightPartners.children.length > 0) familyUnit.appendChild(rightPartners);
+
+        // Agregar al contenedor general
+        contenedor.appendChild(familyUnit);
+    });
+}
+
+// EJECUTAR
+renderizarGeneracion(children, 'hijos');
+renderizarGeneracion(grandchildren, 'nietos');
+renderizarGeneracion(greatGrandchildren, 'bisnietos');
+
+// Renderizado final
+requestAnimationFrame(() => {
+    ajustarSeparacionAbuelos(); 
+    ajustarSeparacionPadres();
+    alinearGenograma(); 
+    alinearPadresExactamente(); 
+    
+    // PASO 1: Mover Hijos (Padres de los nietos)
+    alinearHijosConPadres(); 
+
+    // Usamos setTimeout para asegurar que el navegador "pintó" el paso 1
+    setTimeout(() => {
+        
+        // PASO 2: Mover Nietos (ahora que los padres están quietos)
+        alinearDescendenciaConPareja('nietos');     
+        alinearDescendenciaConPareja('bisnietos');  
+
+        // PASO 3: Dibujar líneas
+        requestAnimationFrame(() => {
+            alinearAncestros(); 
+            dibujarConexiones(); 
+        });
+        
+    }, 0); // El 0 fuerza a que se ejecute al final de la pila de tareas de JS
   });
 }
 
@@ -671,34 +1244,54 @@ function dibujarConexiones() {
   const rightSibs = Array.from(hermanosRight.querySelectorAll('.persona'));
   const hijosDom = Array.from(hijosSlot.querySelectorAll('.persona'));
 
-  // 1) Padres
+  // 1) Padres (Generación 0)
+  let parentsMidX = null;
+  let parentsYBar = null;
+
   if (fatherDom && motherDom) {
-    const cf = centerOf(fatherDom), cm = centerOf(motherDom);
-    layer.add(new Konva.Line({ points: [cf.x, cf.y, cm.x, cm.y], stroke: 'black', strokeWidth: 2 }));
+    // CASO AMBOS PADRES: Dibuja la "U"
+    const cf = centerOf(fatherDom);
+    const cm = centerOf(motherDom);
+    
+    const yBar = Math.max(cf.bottom, cm.bottom) + 15;
+    parentsYBar = yBar;
+    
+    // Bajadas y Barra Horizontal (La U)
+    layer.add(new Konva.Line({ points: [cf.x, cf.bottom, cf.x, yBar], stroke: 'black', strokeWidth: 2 }));
+    layer.add(new Konva.Line({ points: [cm.x, cm.bottom, cm.x, yBar], stroke: 'black', strokeWidth: 2 }));
+    layer.add(new Konva.Line({ points: [cf.x, yBar, cm.x, yBar], stroke: 'black', strokeWidth: 2 }));
+
+    parentsMidX = (cf.x + cm.x) / 2;
+  } 
+  else if (fatherDom || motherDom) {
+    // CASO MONOPARENTAL (Solo uno)
+    // Al haber ocultado el slot vacío en el render(), este nodo estará visualmente en el CENTRO.
+    const single = centerOf(fatherDom || motherDom);
+    parentsMidX = single.x;
+    
+    // IMPORTANTE: Hacemos que la "barra" sea un punto justo debajo del padre
+    parentsYBar = single.bottom + 15; 
+    
+    // Dibujamos una pequeña bajada vertical desde el padre hasta donde empezaría la conexión a hijos
+    layer.add(new Konva.Line({ points: [single.x, single.bottom, single.x, parentsYBar], stroke: 'black', strokeWidth: 2 }));
   }
 
-  // 2) Padres -> Descendencia
+  // 2) Padres -> Descendencia (CONECTAR A LA "U" DE ARRIBA)
   const allChildren = [...leftSibs, patientDom, ...rightSibs].filter(Boolean);
-  if ((fatherDom || motherDom) && allChildren.length) {
-    let originX, originY;
-    if (fatherDom && motherDom) {
-      const cf = centerOf(fatherDom), cm = centerOf(motherDom);
-      originX = (cf.x + cm.x) / 2;
-      originY = (cf.y + cm.y) / 2; 
-    } else {
-      const single = centerOf(fatherDom || motherDom);
-      originX = single.x; originY = single.bottom;
-    }
-
+  
+  if (parentsMidX !== null && allChildren.length) {
     const minTop = Math.min(...allChildren.map(s => centerOf(s).top));
-    const yBar = (originY + minTop) / 2 + 10;
+    // La línea baja desde la barra de los padres hasta un poco antes de los hijos
+    const yChildrenBar = (parentsYBar + minTop) / 2;
 
-    layer.add(new Konva.Line({ points: [originX, originY, originX, yBar], stroke: 'black', strokeWidth: 2 }));
+    // Bajada central desde la unión de padres
+    layer.add(new Konva.Line({ points: [parentsMidX, parentsYBar, parentsMidX, yChildrenBar], stroke: 'black', strokeWidth: 2 }));
 
+    // Barra horizontal sobre los hijos y bajadas individuales
     allChildren.forEach(s => {
       const c = centerOf(s);
-      layer.add(new Konva.Line({ points: [c.x, c.top, c.x, yBar], stroke: 'black', strokeWidth: 2 }));
-      layer.add(new Konva.Line({ points: [originX, yBar, c.x, yBar], stroke: 'black', strokeWidth: 2 }));
+      layer.add(new Konva.Line({ points: [c.x, c.top, c.x, yChildrenBar], stroke: 'black', strokeWidth: 2 }));
+      layer.add(new Konva.Line({ points: [parentsMidX, yChildrenBar, c.x, yChildrenBar], stroke: 'black', strokeWidth: 2 }));
     });
   }
 
@@ -956,6 +1549,187 @@ function dibujarConexiones() {
     });
   }
 
+  /* ========== NUEVAS CONEXIONES: ANCESTROS ========== */
+  function conectarAncestros(ancestorList, childList, generationY_Top, generationY_Bottom) {
+      // childList puede ser parents, grandparents, etc.
+      // Iteramos sobre los "hijos" para buscar a sus "padres" en la ancestorList
+      
+      let childNodes = [];
+      // Normalizar childList (puede ser objeto {father, mother} o array)
+      if (Array.isArray(childList)) childNodes = childList;
+      else {
+          if (childList.father) childNodes.push(childList.father);
+          if (childList.mother) childNodes.push(childList.mother);
+      }
+
+      childNodes.forEach(childData => {
+          // Buscar nodos visuales
+          const childNode = document.querySelector(`.persona[data-id="${childData.id}"]`);
+          if (!childNode) return;
+          const cChild = centerOf(childNode);
+
+          // Buscar padres de este nodo en la lista de ancestros
+          const misPadres = ancestorList.filter(p => p.targetId === childData.id);
+          
+          if (misPadres.length === 0) return;
+
+          // Obtener centros de los padres visuales
+          const parentCenters = misPadres.map(p => {
+              const node = document.querySelector(`.persona[data-id="${p.id}"]`);
+              return node ? centerOf(node) : null;
+          }).filter(Boolean);
+
+          if (parentCenters.length === 0) return;
+
+          // REGLA: 1 Padre = Línea vertical. 2 Padres = U Invertida
+          if (parentCenters.length === 1) {
+               // Línea vertical directa
+               const cp = parentCenters[0];
+               layer.add(new Konva.Line({ points: [cp.x, cp.bottom, cChild.x, cChild.top], stroke: 'black', strokeWidth: 2 }));
+          } else {
+               // Ordenar izquierda derecha
+               parentCenters.sort((a,b) => a.x - b.x);
+               const p1 = parentCenters[0]; // Izq
+               const p2 = parentCenters[parentCenters.length - 1]; // Der (por si hay poligamia, tomamos extremos)
+
+               const midY = (p1.bottom + cChild.top) / 2;
+               
+               // Línea horizontal entre padres (la U)
+               layer.add(new Konva.Line({ points: [p1.x, p1.bottom + 10, p2.x, p2.bottom + 10], stroke: 'black', strokeWidth: 2 }));
+               
+               // Bajadas pequeñas de padres a la U
+               layer.add(new Konva.Line({ points: [p1.x, p1.bottom, p1.x, p1.bottom + 10], stroke: 'black', strokeWidth: 2 }));
+               layer.add(new Konva.Line({ points: [p2.x, p2.bottom, p2.x, p2.bottom + 10], stroke: 'black', strokeWidth: 2 }));
+
+               // Bajada central al hijo
+               const centerX = (p1.x + p2.x) / 2;
+               layer.add(new Konva.Line({ points: [centerX, p1.bottom + 10, cChild.x, cChild.top], stroke: 'black', strokeWidth: 2 }));
+          }
+      });
+  }
+
+  // 1. Conectar Bisabuelos -> Abuelos
+  conectarAncestros(greatGrandparents, grandparents, 0, 0);
+  
+  // 2. Conectar Abuelos -> Padres
+  conectarAncestros(grandparents, parents, 0, 0);
+
+  /* ========== CONEXIÓN RAMAS DESCENDIENTES (TIPO TUBERÍA) ========== */
+  function conectarRamaDescendiente(listaHijos, listaNietos) {
+      // ITERAMOS SOBRE LAS PAREJAS (RELACIONES) EXISTENTES
+      // En lugar de buscar en los nietos, buscamos en los "matrimonios" de la generación anterior.
+      descendantPartners.forEach(pareja => {
+          // Datos del matrimonio
+          const idBio = pareja.targetId; // El hijo de sangre (ej. hijo del paciente)
+          const idPareja = pareja.id;    // La pareja externa (ej. nuera)
+
+          // 1. Buscar los nodos visuales de los PADRES (Hijo + Nuera)
+          const nodoBio = document.querySelector(`.persona[data-id="${idBio}"]`);
+          const nodoPareja = document.querySelector(`.persona[data-id="${idPareja}"]`);
+          
+          // Si alguno no está dibujado, saltamos
+          if (!nodoBio || !nodoPareja) return;
+
+          // 2. Buscar a los HIJOS (Nietos) que pertenezcan a este padre biológico
+          // (Asumimos que son hijos de esta pareja actual)
+          const misHijos = listaNietos.filter(n => n.targetId === idBio);
+          
+          if (misHijos.length === 0) return;
+
+          // 3. Obtener centros visuales
+          const cBio = centerOf(nodoBio);
+          const cPareja = centerOf(nodoPareja);
+
+          // A. PUNTO DE INICIO (Centro del matrimonio - la "U")
+          const startX = (cBio.x + cPareja.x) / 2;
+          const startY = Math.max(cBio.bottom, cPareja.bottom) + 20; // +20 coincide con la altura de la U que dibujas en conectarParejasDescendientes
+
+          // B. CALCULAR LÍMITES DE LOS HIJOS (NIETOS)
+          const centrosHijos = misHijos.map(n => {
+              const node = document.querySelector(`.persona[data-id="${n.id}"]`);
+              return node ? centerOf(node) : null;
+          }).filter(Boolean);
+
+          if (centrosHijos.length === 0) return;
+
+          const minChildX = Math.min(...centrosHijos.map(c => c.x));
+          const maxChildX = Math.max(...centrosHijos.map(c => c.x));
+          const childTop = centrosHijos[0].top;
+
+          // C. DIBUJAR LÍNEAS (Tubería)
+          
+          // 1. Tallo Vertical desde Padres hacia abajo
+          const midY = (startY + childTop) / 2;
+          layer.add(new Konva.Line({ points: [startX, startY, startX, midY], stroke: 'black', strokeWidth: 2 }));
+
+          // 2. Barra Horizontal sobre los hijos (si hay más de uno o están desplazados)
+          const barLeft = Math.min(startX, minChildX);
+          const barRight = Math.max(startX, maxChildX);
+          
+          layer.add(new Konva.Line({ points: [barLeft, midY, barRight, midY], stroke: 'black', strokeWidth: 2 }));
+
+          // 3. Bajadas a cada hijo
+          centrosHijos.forEach(c => {
+              layer.add(new Konva.Line({ points: [c.x, midY, c.x, c.top], stroke: 'black', strokeWidth: 2 }));
+          });
+      });
+  }
+
+  // Ejecutar para las generaciones correspondientes
+  conectarRamaDescendiente(children, grandchildren);       // Hijos -> Nietos
+  conectarRamaDescendiente(grandchildren, greatGrandchildren); // Nietos -> Bisnietos
+
+  /* ========== CONEXIÓN PAREJAS (CORCHETE "U") ========== */
+function conectarParejasDescendientes(listaDescendientes) {
+    listaDescendientes.forEach(persona => {
+        const suPareja = descendantPartners.find(dp => dp.targetId === persona.id);
+        if (!suPareja) return;
+
+        const nodoPersona = document.querySelector(`.persona[data-id="${persona.id}"]`);
+        const nodoPareja = document.querySelector(`.persona[data-id="${suPareja.id}"]`);
+
+        if (nodoPersona && nodoPareja) {
+            const c1 = centerOf(nodoPersona);
+            const c2 = centerOf(nodoPareja);
+
+            // Altura de la barra horizontal (Base de la U)
+            // 20px debajo de las personas
+            const yBar = Math.max(c1.bottom, c2.bottom) + 20;
+
+            // 1. Bajada Vertical desde la Persona
+            layer.add(new Konva.Line({ 
+                points: [c1.x, c1.bottom, c1.x, yBar], 
+                stroke: 'black', strokeWidth: 2 
+            }));
+
+            // 2. Bajada Vertical desde la Pareja
+            layer.add(new Konva.Line({ 
+                points: [c2.x, c2.bottom, c2.x, yBar], 
+                stroke: 'black', strokeWidth: 2 
+            }));
+
+            // 3. Barra Horizontal Larga (El puente)
+            layer.add(new Konva.Line({ 
+                points: [c1.x, yBar, c2.x, yBar], 
+                stroke: 'black', strokeWidth: 2 
+            }));
+            
+            // Opcional: Si quieres un pequeño indicador en el centro de la relación
+            // const midX = (c1.x + c2.x) / 2;
+            // layer.add(new Konva.Circle({ x: midX, y: yBar, radius: 3, fill: 'black' }));
+        }
+    });
+}
+
+  // Ejecutar para las generaciones correspondientes
+  conectarRamaDescendiente(children, grandchildren);       // Hijos -> Nietos
+  conectarRamaDescendiente(grandchildren, greatGrandchildren); // Nietos -> Bisnietos
+
+  // --- NUEVO: DIBUJAR LAS "U" DE LAS PAREJAS ---
+  conectarParejasDescendientes(children);
+  conectarParejasDescendientes(grandchildren);
+  conectarParejasDescendientes(greatGrandchildren);
+
   layer.draw();
 }
 
@@ -980,9 +1754,78 @@ function abrirFormFamiliar(){
 }
 function cerrarFormFamiliar(){ formFamiliar.classList.add('oculto'); }
 
-/* --- C. BOTÓN GUARDAR (CORREGIDO) --- */
+/* --- NUEVA FUNCIÓN: CARGAR DATOS PARA EDITAR --- */
+function cargarDatosEdicion() {
+  if (!seleccionado) return;
+  
+  // Rellenar campos básicos
+  document.getElementById('famNombre').value = seleccionado.nombre || '';
+  document.getElementById('famApellido').value = seleccionado.apellido || '';
+  document.getElementById('famEdad').value = seleccionado.edad || '';
+  document.getElementById('famSexo').value = seleccionado.sexo || 'M';
+  document.getElementById('famEstado').value = seleccionado.estado || 'vivo';
+  document.getElementById('famSalud').value = seleccionado.salud || 'ninguno';
+  document.getElementById('famLgtb').checked = seleccionado.lgtb || false;
+  document.getElementById('relAnioInicio').value = seleccionado.relAnioInicio || '';
+  document.getElementById('relAnioFin').value = seleccionado.relAnioFin || '';
+
+  // Rellenar selects específicos
+  if (seleccionado.tipoRelacion) document.getElementById('famTipoRelacion').value = seleccionado.tipoRelacion;
+  if (seleccionado.tipoHijo) document.getElementById('famTipoHijo').value = seleccionado.tipoHijo;
+
+  // Intentar preseleccionar el Rol y el Target (Vinculación)
+  const rolSelect = document.getElementById('famRol');
+  
+  // Si guardamos el rol en la creación, lo usamos. Si no, bloqueamos para evitar errores.
+  if (seleccionado.rol) {
+      rolSelect.value = seleccionado.rol;
+      // Disparamos el evento para que aparezcan los campos de vinculación (targetId)
+      rolSelect.dispatchEvent(new Event('change'));
+      
+      // Una vez generada la lista de targetId, seleccionamos el correcto
+      const targetInput = document.getElementById('famTargetId');
+      if (seleccionado.targetId) targetInput.value = seleccionado.targetId;
+      if (seleccionado.idPareja && seleccionado.rol === 'hijo') targetInput.value = seleccionado.idPareja;
+  }
+  
+  // Actualizar UI (bloqueo de campos por estado, etc.)
+  toggleDivorcioOption();
+  actualizarCamposPorEstado();
+}
+
+// Evento del botón Modificar
+menuModificarBtn.onclick = () => {
+    // CORRECCIÓN: No llamamos a cerrarMenu() aquí porque eso pone seleccionado = null.
+    // En su lugar, ocultamos el menú manualmente para conservar la persona seleccionada.
+    menu.classList.add('oculto'); 
+    
+    if (seleccionado) {
+        modoEdicion = true; // Activamos modo edición
+        document.querySelector('#formFamiliar h4').textContent = "Modificar Familiar"; 
+        document.getElementById('guardarFamiliarBtn').textContent = "Guardar Cambios";
+        
+        abrirFormFamiliar();
+        cargarDatosEdicion(); // Llenamos el formulario
+    }
+};
+
+// Ajuste al botón "Agregar" para resetear el modo edición
+const originalMenuAgregar = menuAgregarBtn.onclick;
+menuAgregarBtn.onclick = () => {
+    modoEdicion = false; // Modo creación
+    document.querySelector('#formFamiliar h4').textContent = "Agregar familiar";
+    document.getElementById('guardarFamiliarBtn').textContent = "Agregar";
+    
+    cerrarMenu();
+    abrirFormFamiliar();
+    // Limpieza extra por si acaso
+    document.getElementById('famNombre').value = '';
+    document.getElementById('famApellido').value = '';
+};
+
+/* --- C. BOTÓN GUARDAR (MODIFICADO PARA EDITAR) --- */
 guardarFamiliarBtn.onclick = () => {
-  // 1. CAPTURA DE TODOS LOS INPUTS (Incluyendo los nuevos de fechas)
+  // 1. CAPTURA DE TODOS LOS INPUTS
   const nomInput = document.getElementById('famNombre');
   const apeInput = document.getElementById('famApellido');
   const edadInput = document.getElementById('famEdad');
@@ -993,82 +1836,118 @@ guardarFamiliarBtn.onclick = () => {
   const lgtbInput = document.getElementById('famLgtb');
   const tipoRelacionInput = document.getElementById('famTipoRelacion'); 
   const tipoHijoInput = document.getElementById('famTipoHijo');
-  const idParejaInput = document.getElementById('famIdPareja'); // <--- NUEVO
-
-  // --- NUEVO: Capturar los inputs de fecha aquí arriba ---
+  const targetIdInput = document.getElementById('famTargetId');
+  
   const anioInicioInput = document.getElementById('relAnioInicio');
   const anioFinInput = document.getElementById('relAnioFin');
 
-  // Validaciones básicas
+  // Validaciones
   const estado = estadoInput.value;
   const nom = nomInput.value.trim();
   const permiteSinNombre = ['embarazo', 'aborto_esp', 'aborto_prov'].includes(estado);
-  
+
   if (!nom && !permiteSinNombre) return alert("Por favor ingresa un nombre");
 
-  // Función auxiliar para limpiar el año (convierte texto a número o null)
   const getYearVal = (input) => {
     const val = parseInt(input.value.trim());
-    // Si es un número válido y mayor a 1800, lo guardamos. Si no, null.
     return (Number.isFinite(val) && val > 1800) ? val : null;
   };
 
-  // 2. CREACIÓN DEL OBJETO
-  const p = { 
-    id: uid(), 
-    nombre: nom || '', 
-    apellido: apeInput.value, 
-    edad: edadInput.value, 
-    sexo: sexoInput.value,
-    estado: estado, 
-    salud: saludInput.value,
-    lgtb: lgtbInput.checked,
-    tipoRelacion: tipoRelacionInput.value,
-    tipoHijo: tipoHijoInput.value,
-    idPareja: (rolInput.value === 'hijo') ? idParejaInput.value : null, // <--- NUEVO: Guardamos el ID de la pareja
-    // Como ya definimos 'anioInicioInput' y 'getYearVal' arriba, esto ya no dará error
-    relAnioInicio: (rolInput.value === 'pareja') ? getYearVal(anioInicioInput) : null,
-    relAnioFin: (rolInput.value === 'pareja') ? getYearVal(anioFinInput) : null
-  };
+  // 2. LÓGICA DE EDICIÓN
+  if (modoEdicion && seleccionado) {
+      // Actualizamos solo las propiedades del objeto existente
+      seleccionado.nombre = nom;
+      seleccionado.apellido = apeInput.value;
+      seleccionado.edad = edadInput.value;
+      seleccionado.sexo = sexoInput.value;
+      seleccionado.estado = estado;
+      seleccionado.salud = saludInput.value;
+      seleccionado.lgtb = lgtbInput.checked;
+      seleccionado.tipoRelacion = tipoRelacionInput.value;
+      seleccionado.tipoHijo = tipoHijoInput.value;
+      seleccionado.relAnioInicio = getYearVal(anioInicioInput);
+      seleccionado.relAnioFin = getYearVal(anioFinInput);
+      
+      // Intentamos actualizar targetId y rol solo si no rompe la estructura
+      // (Nota: Cambiar roles complejos requeriría mover de array, aquí solo actualizamos datos)
+      if(targetIdInput.value) seleccionado.targetId = targetIdInput.value;
+      if(targetIdInput.value && seleccionado.rol === 'hijo') seleccionado.idPareja = targetIdInput.value;
 
-  // 3. LOGICA DE GUARDADO (Igual que antes)
-  const rol = rolInput.value;
-  if (rol === 'padre') { 
-    if (p.sexo === 'M') parents.father = p; else parents.mother = p; 
+  } else {
+      // 3. LÓGICA DE CREACIÓN (NUEVO)
+      const p = { 
+        id: uid(), 
+        nombre: nom || '', 
+        apellido: apeInput.value, 
+        edad: edadInput.value, 
+        sexo: sexoInput.value,
+        estado: estado, 
+        salud: saludInput.value,
+        lgtb: lgtbInput.checked,
+        tipoRelacion: tipoRelacionInput.value,
+        tipoHijo: tipoHijoInput.value,
+        targetId: targetIdInput.value, 
+        rol: rolInput.value, // IMPORTANTE: Guardamos el rol para poder editarlo luego
+        relAnioInicio: getYearVal(anioInicioInput),
+        relAnioFin: getYearVal(anioFinInput)
+      };
+
+      const rol = rolInput.value;
+      if (rol === 'bisabuelo') greatGrandparents.push(p);
+      else if (rol === 'abuelo') grandparents.push(p);
+      else if (rol === 'padre') { 
+        if (p.sexo === 'M') parents.father = p; else parents.mother = p; 
+      }
+      else if (rol === 'pareja') {
+        const idx = partners.findIndex(x => x.id === p.id);
+        if (idx >= 0) partners[idx] = p;
+        partners.push(p);
+      }
+      else if (rol === 'hermano') siblings.push(p);
+      else if (rol === 'hijo') {
+          p.idPareja = targetIdInput.value; 
+          children.push(p);
+      }
+      else if (rol === 'nieto') grandchildren.push(p);
+      else if (rol === 'bisnieto') greatGrandchildren.push(p);
+      else if (rol === 'pareja_descendiente') descendantPartners.push(p);
   }
-  else if(rol==='pareja') {
-    // Si estamos editando uno existente, lo reemplazamos
-    const idx = partners.findIndex(x => x.id === p.id);
-    if (idx >= 0) partners[idx] = p;
-    else partners.push(p); // Si es nuevo, lo añadimos a la lista
-  }
-  else if (rol === 'hermano') siblings.push(p);
-  else if (rol === 'hijo') children.push(p);
-  
-  // 4. RESETEAR FORMULARIO
+
+  // 4. LIMPIEZA Y RESET
   nomInput.value = ''; apeInput.value = ''; edadInput.value = '';
   estadoInput.value = 'vivo'; saludInput.value = 'ninguno';
   lgtbInput.checked = false;
-  tipoRelacionInput.value = 'normal';
-  tipoHijoInput.value = 'biologico';
-  sexoInput.value = 'M'; rolInput.value = 'padre';
+  tipoRelacionInput.value = 'normal'; tipoHijoInput.value = 'biologico';
+  anioInicioInput.value = ''; anioFinInput.value = '';
   
-  // Resetear fechas también
-  anioInicioInput.value = '';
-  anioFinInput.value = '';
-
   cerrarFormFamiliar(); 
   render();
 };
 
 function eliminarSeleccionado(){
+  if(!seleccionado) return;
   const id = seleccionado.id;
+
+  // 1. Paciente
   if(patient && patient.id===id) { patient=null; formPaciente.style.display='block'; }
+  
+  // 2. Padres
   if(parents.father && parents.father.id===id) parents.father=null;
   if(parents.mother && parents.mother.id===id) parents.mother=null;
+  
+  // 3. Listas Simples (Filtrar ID)
   partners = partners.filter(p => p.id !== id);
-  siblings = siblings.filter(s=>s.id!==id);
-  children = children.filter(c=>c.id!==id);
+  siblings = siblings.filter(s => s.id !== id);
+  children = children.filter(c => c.id !== id);
+  
+  // 4. NUEVAS LISTAS (Agregado para que funcione borrar abuelos/nietos)
+  grandparents = grandparents.filter(p => p.id !== id);
+  greatGrandparents = greatGrandparents.filter(p => p.id !== id);
+  grandchildren = grandchildren.filter(p => p.id !== id);
+  greatGrandchildren = greatGrandchildren.filter(p => p.id !== id);
+  descendantPartners = descendantPartners.filter(p => p.id !== id);
+
+  seleccionado = null;
   render();
 }
 
@@ -1085,6 +1964,134 @@ if(params.has('nombre')){
 }
 
 render();
+
+/* ========== LÓGICA DE EXPORTACIÓN A PDF ========== */
+const btnExportarPDF = document.getElementById('btnExportarPDF');
+
+btnExportarPDF.addEventListener('click', async () => {
+  // 1. Feedback visual al usuario
+  const textoOriginal = btnExportarPDF.textContent;
+  btnExportarPDF.textContent = "Generando PDF...";
+  btnExportarPDF.disabled = true;
+
+  try {
+    const { jsPDF } = window.jspdf;
+    
+    // Seleccionamos el contenedor exacto que tiene el dibujo y las tarjetas
+    const element = document.querySelector('.genograma-container');
+
+    // 2. Usar html2canvas para crear una imagen del DOM
+    // scale: 2 mejora la calidad del texto y las líneas
+    const canvas = await html2canvas(element, {
+      scale: 2, 
+      useCORS: true, // Ayuda si hay imágenes externas (aunque no parece ser el caso)
+      backgroundColor: "#ffffff", // Fondo blanco obligatorio para PDF
+      logging: false,
+      windowWidth: element.scrollWidth, // Asegura capturar todo si hay scroll
+      windowHeight: element.scrollHeight
+    });
+
+    // 3. Configurar el PDF (Horizontal/Landscape es mejor para genogramas)
+    const pdf = new jsPDF('l', 'mm', 'a4'); // 'l' = landscape
+    
+    // Dimensiones de A4 Landscape
+    const pdfWidth = 297; 
+    const pdfHeight = 210;
+    const margen = 10; // Margen de 10mm
+
+    // Obtener dimensiones de la imagen generada
+    const imgData = canvas.toDataURL('image/png');
+    const imgProps = pdf.getImageProperties(imgData);
+    
+    // 4. Calcular ratio para ajustar la imagen a la página sin deformar
+    const pdfContentWidth = pdfWidth - (margen * 2);
+    const pdfContentHeight = pdfHeight - (margen * 2);
+
+    const ratioWidth = pdfContentWidth / imgProps.width;
+    const ratioHeight = pdfContentHeight / imgProps.height;
+    
+    // Usamos el ratio menor para que quepa entero
+    const ratio = Math.min(ratioWidth, ratioHeight);
+    
+    const newWidth = imgProps.width * ratio;
+    const newHeight = imgProps.height * ratio;
+
+    // 5. Centrar la imagen en el PDF
+    const x = (pdfWidth - newWidth) / 2;
+    const y = (pdfHeight - newHeight) / 2;
+
+    pdf.addImage(imgData, 'PNG', x, y, newWidth, newHeight);
+    
+    // 6. Guardar
+    pdf.save('genograma.pdf');
+
+  } catch (err) {
+    console.error("Error exportando PDF:", err);
+    alert("Hubo un error al generar el PDF. Revisa la consola para más detalles.");
+  } finally {
+    // Restaurar botón
+    btnExportarPDF.textContent = textoOriginal;
+    btnExportarPDF.disabled = false;
+  }
+});
+
+/* ========== GUARDADO EN BASE DE DATOS ========== */
+const btnGuardarDB = document.getElementById('btnGuardarDB');
+
+btnGuardarDB.addEventListener('click', async () => {
+  // 1. Validar que haya algo que guardar
+  if (!patient) {
+    alert("No hay un paciente principal creado. Nada que guardar.");
+    return;
+  }
+
+  // 2. Empaquetar todos los datos en un solo objeto JSON
+  const datosGenograma = {
+    patient: patient,
+    parents: parents,
+    partners: partners,
+    siblings: siblings,
+    children: children,
+    grandparents: grandparents,
+    greatGrandparents: greatGrandparents,
+    grandchildren: grandchildren,
+    greatGrandchildren: greatGrandchildren,
+    descendantPartners: descendantPartners
+  };
+
+  // 3. Feedback visual (cambiar texto del botón)
+  const textoOriginal = btnGuardarDB.textContent;
+  btnGuardarDB.textContent = "Guardando...";
+  btnGuardarDB.disabled = true;
+
+  try {
+    // 4. Enviar los datos al backend usando FETCH
+    // Asegúrate de que el puerto (3001) coincida con el que sale en tu terminal al iniciar el servidor
+const respuesta = await fetch('http://localhost:3001/api/guardar-genograma', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(datosGenograma)
+    });
+
+    if (respuesta.ok) {
+      alert("✅ Genograma guardado correctamente en la base de datos.");
+    } else {
+      alert("❌ Error al guardar en el servidor.");
+      console.error("Error servidor:", await respuesta.text());
+    }
+
+  } catch (error) {
+    console.error("Error de conexión:", error);
+    alert("❌ Error de conexión con la base de datos.");
+  } finally {
+    // Restaurar botón
+    btnGuardarDB.textContent = textoOriginal;
+    btnGuardarDB.disabled = false;
+  }
+});
+
 </script>
 </body>
 </html>

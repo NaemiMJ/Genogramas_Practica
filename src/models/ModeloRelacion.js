@@ -4,7 +4,7 @@ const { Schema } = mongoose;
 const relacionSchema = new Schema({
   miembros: [{
     type: Schema.Types.ObjectId,
-    ref: 'Persona',
+    ref: 'Familiar', // <--- CAMBIO AQUÍ
     required: true
   }],
 
