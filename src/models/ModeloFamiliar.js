@@ -2,23 +2,29 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const familiarSchema = new Schema({
-  // Datos básicos del formulario
   nombre: { type: String, required: true },
   apellido: { type: String, default: '' },
   edad: { type: Number, default: 0 },
   sexo: { type: String, enum: ['M', 'F'], required: true },
   
-  // Datos específicos del Genograma
-  rol: { type: String }, // 'paciente', 'padre', 'abuelo', etc.
-  estado: { type: String, default: 'vivo' }, // 'fallecido', 'embarazo', etc.
+  rol: { type: String },
+  estado: { type: String, default: 'vivo' },
   salud: { type: String, default: 'ninguno' },
   esLgtb: { type: Boolean, default: false },
 
-  // ID temporal del Frontend (CRUCIAL para reconstruir relaciones)
+  // IMPORTANTE: ID del objeto en el frontend (para reconstruir el dibujo)
   tempIdFrontend: { type: String }, 
 
-  // Opcional: Si quieres saber a qué paciente principal pertenece este familiar
-  // genogramaId: { type: Schema.Types.ObjectId, ref: 'Paciente' } 
+  // IMPORTANTE: Datos de relación para reconstruir la estructura visual
+  targetId: { type: String },    // A quién está vinculado (ej. hijo de quién)
+  idPareja: { type: String },    // Si es hijo, quién es su otro progenitor
+  tipoRelacion: { type: String },
+  tipoHijo: { type: String },
+  relAnioInicio: { type: Number },
+  relAnioFin: { type: Number },
+
+  // CAMPO NUEVO: Identificador único del grupo familiar
+  genogramaId: { type: String, required: true, index: true } 
 
 }, { timestamps: true });
 

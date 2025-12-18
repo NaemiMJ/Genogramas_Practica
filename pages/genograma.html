@@ -1957,11 +1957,104 @@ window.addEventListener('resize', () => {
   requestAnimationFrame(() => dibujarConexiones());
 });
 
-const params = new URLSearchParams(window.location.search);
-if(params.has('nombre')){
-   patient = { id:uid(), nombre:params.get('nombre'), apellido:params.get('apellido')||'', edad:params.get('edad')||0, sexo:params.get('sexo')||'M', esPaciente:true };
-   formPaciente.style.display='none';
+/* ========== INICIALIZACIÓN Y CARGA DE DATOS ========== */
+
+async function iniciarGenograma() {
+  const params = new URLSearchParams(window.location.search);
+  const pNombre = params.get('nombre');
+  const pApellido = params.get('apellido') || '';
+  const pEdad = params.get('edad') || 0;
+  const pSexo = params.get('sexo') || 'M';
+
+  if (pNombre) {
+    try {
+      // 1. Intentamos buscar en la Base de Datos
+      const respuesta = await fetch(`http://localhost:3001/api/obtener-genograma?nombre=${encodeURIComponent(pNombre)}&apellido=${encodeURIComponent(pApellido)}`);
+      
+      if (respuesta.ok) {
+        const familiaDB = await respuesta.json();
+        console.log("Datos cargados de DB:", familiaDB);
+        reconstruirDesdeDB(familiaDB); // Función nueva (ver abajo)
+      } else {
+        // 2. Si no existe (404), creamos uno nuevo con los datos de la URL
+        console.log("Paciente nuevo, creando desde URL...");
+        crearPacienteDesdeURL(pNombre, pApellido, pEdad, pSexo);
+      }
+    } catch (error) {
+      console.error("Error al conectar con API:", error);
+      // Fallback: Crear localmente si falla la API
+      crearPacienteDesdeURL(pNombre, pApellido, pEdad, pSexo);
+    }
+  }
+  
+  // Renderizar al final de todo
+  render();
 }
+
+function crearPacienteDesdeURL(nombre, apellido, edad, sexo) {
+  patient = { 
+      id: uid(), // Generamos ID nuevo
+      nombre: nombre, 
+      apellido: apellido, 
+      edad: edad, 
+      sexo: sexo, 
+      esPaciente: true 
+  };
+  formPaciente.style.display = 'none';
+}
+
+function reconstruirDesdeDB(familia) {
+  // Limpiamos listas actuales
+  parents = { father: null, mother: null };
+  partners = []; siblings = []; children = [];
+  grandparents = []; greatGrandparents = [];
+  grandchildren = []; greatGrandchildren = [];
+  descendantPartners = [];
+
+  // Mapeamos los datos de DB al formato del Frontend
+  familia.forEach(dbItem => {
+      // Reconstruimos el objeto tal cual lo usa tu script visual
+      const persona = {
+          id: dbItem.tempIdFrontend, // ¡Muy importante! Usar el ID original visual
+          nombre: dbItem.nombre,
+          apellido: dbItem.apellido,
+          edad: dbItem.edad,
+          sexo: dbItem.sexo,
+          estado: dbItem.estado,
+          salud: dbItem.salud,
+          lgtb: dbItem.esLgtb,
+          rol: dbItem.rol,
+          // Datos relacionales
+          targetId: dbItem.targetId,
+          idPareja: dbItem.idPareja,
+          tipoRelacion: dbItem.tipoRelacion,
+          tipoHijo: dbItem.tipoHijo,
+          relAnioInicio: dbItem.relAnioInicio,
+          relAnioFin: dbItem.relAnioFin
+      };
+
+      if (dbItem.rol === 'paciente') {
+          persona.esPaciente = true;
+          patient = persona;
+          formPaciente.style.display = 'none';
+      } 
+      else if (dbItem.rol === 'padre') {
+          if (persona.sexo === 'M') parents.father = persona;
+          else parents.mother = persona;
+      }
+      else if (dbItem.rol === 'pareja') partners.push(persona);
+      else if (dbItem.rol === 'hermano') siblings.push(persona);
+      else if (dbItem.rol === 'hijo') children.push(persona);
+      else if (dbItem.rol === 'abuelo') grandparents.push(persona);
+      else if (dbItem.rol === 'bisabuelo') greatGrandparents.push(persona);
+      else if (dbItem.rol === 'nieto') grandchildren.push(persona);
+      else if (dbItem.rol === 'bisnieto') greatGrandchildren.push(persona);
+      else if (dbItem.rol === 'pareja_descendiente') descendantPartners.push(persona);
+  });
+}
+
+// Ejecutamos al cargar
+iniciarGenograma();
 
 render();
 

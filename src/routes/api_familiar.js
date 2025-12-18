@@ -1,50 +1,54 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
-const Familiar = require('../models/ModeloFamiliar'); 
-const Relacion = require('../models/ModeloRelacion'); // Asegúrate que la ruta sea correcta
+const Familiar = require('../models/ModeloFamiliar'); // Asegúrate que la ruta sea correcta
 
-// Ruta POST: /api/familiar/guardar-genograma
+/* ==========================================
+   RUTA POST: GUARDAR GENOGRAMA
+   ========================================== */
 router.post('/guardar-genograma', async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const data = req.body; // Recibimos { patient, parents, siblings... }
+    const data = req.body;
 
-    // 1. Aplanar todos los arrays en una sola lista para procesarlos
+    // 1. Validar que exista el paciente para usar su ID como identificador del grupo
+    if (!data.patient || !data.patient.id) {
+        throw new Error("No hay paciente principal definido.");
+    }
+    const genogramaId = data.patient.id; 
+
+    // 2. Preparar la lista plana (igual que antes)
     let todosLosFamiliares = [];
+    const preparar = (p, rol) => ({ ...p, rol, genogramaId }); // Añadimos el genogramaId a todos
+
+    todosLosFamiliares.push(preparar(data.patient, 'paciente'));
+    if (data.parents.father) todosLosFamiliares.push(preparar(data.parents.father, 'padre'));
+    if (data.parents.mother) todosLosFamiliares.push(preparar(data.parents.mother, 'padre'));
     
-    // Agregamos al paciente principal
-    if (data.patient) todosLosFamiliares.push({ ...data.patient, rol: 'paciente' });
-    
-    // Agregamos padres si existen
-    if (data.parents && data.parents.father) todosLosFamiliares.push(data.parents.father);
-    if (data.parents && data.parents.mother) todosLosFamiliares.push(data.parents.mother);
-    
-    // Función auxiliar para agregar listas
-    const addList = (list) => { 
-        if(list && Array.isArray(list)) todosLosFamiliares.push(...list); 
+    const addList = (list, rol) => { 
+        if(Array.isArray(list)) list.forEach(item => todosLosFamiliares.push(preparar(item, rol))); 
     };
     
-    addList(data.partners);
-    addList(data.siblings);
-    addList(data.children);
-    addList(data.grandparents);
-    addList(data.greatGrandparents);
-    addList(data.grandchildren);
-    addList(data.greatGrandchildren);
-    addList(data.descendantPartners);
+    // ... Agrega aquí tus otras listas (hijos, nietos, etc.) usando addList ...
+    addList(data.partners, 'pareja');
+    addList(data.siblings, 'hermano');
+    addList(data.children, 'hijo');
+    addList(data.grandparents, 'abuelo');
+    addList(data.greatGrandparents, 'bisabuelo');
+    addList(data.grandchildren, 'nieto');
+    addList(data.greatGrandchildren, 'bisnieto');
+    addList(data.descendantPartners, 'pareja_descendiente');
 
-    // 2. Mapa para traducir IDs: { 'id_temporal': 'ObjectId_Real' }
-    const idMap = {};
-    const familiaresGuardados = [];
+    // --- EL PASO CLAVE PARA EVITAR DUPLICADOS ---
+    // 3. Borramos TODO lo que pertenezca a este ID antes de guardar lo nuevo
+    await Familiar.deleteMany({ genogramaId: genogramaId }, { session });
 
-    // 3. Guardar cada Familiar en la BD
+    // 4. Guardamos la nueva versión limpia
     for (const f of todosLosFamiliares) {
-      if (!f || !f.id) continue; // Saltamos si está vacío
-
-      const nuevoFamiliar = new Familiar({
+      const nuevo = new Familiar({
+        genogramaId: f.genogramaId, // Asegúrate de guardar esto
         nombre: f.nombre,
         apellido: f.apellido,
         edad: f.edad,
@@ -52,79 +56,63 @@ router.post('/guardar-genograma', async (req, res) => {
         rol: f.rol,
         estado: f.estado,
         salud: f.salud,
-        esLgtb: f.lgtb, // Frontend manda 'lgtb', modelo espera 'esLgtb'
-        tempIdFrontend: f.id 
+        esLgtb: f.lgtb, 
+        tempIdFrontend: f.id,
+        targetId: f.targetId,
+        idPareja: f.idPareja,
+        tipoRelacion: f.tipoRelacion,
+        tipoHijo: f.tipoHijo,
+        relAnioInicio: f.relAnioInicio,
+        relAnioFin: f.relAnioFin
       });
-
-      const savedDoc = await nuevoFamiliar.save({ session });
-      
-      // Guardamos la referencia para usarla en las relaciones
-      idMap[f.id] = savedDoc._id; 
-      familiaresGuardados.push(savedDoc);
+      await nuevo.save({ session });
     }
 
-    // 4. Crear las Relaciones (Matrimonios / Parejas)
-    const relacionesParaGuardar = [];
-
-    // A. Parejas del Paciente Principal
-    if (data.partners) {
-      for (const part of data.partners) {
-        // Buscamos los IDs reales en el mapa
-        const idPacienteReal = idMap[data.patient.id];
-        const idParejaReal = idMap[part.id];
-
-        if (idPacienteReal && idParejaReal) {
-          relacionesParaGuardar.push({
-            miembros: [idPacienteReal, idParejaReal],
-            tipo_relacion: part.tipoRelacion || 'matrimonio',
-            calidad: 'cercana', // Valor por defecto o agrega campo en frontend
-            fecha_inicio: part.relAnioInicio ? new Date(part.relAnioInicio, 0, 1) : null,
-            fecha_fin: part.relAnioFin ? new Date(part.relAnioFin, 0, 1) : null
-          });
-        }
-      }
-    }
-
-    // B. Parejas de la Descendencia (Hijos/Nietos y sus parejas)
-    if (data.descendantPartners) {
-      for (const dp of data.descendantPartners) {
-        // En frontend: dp.id es la pareja externa, dp.targetId es el familiar biológico
-        const idBiologicoReal = idMap[dp.targetId];
-        const idParejaExternaReal = idMap[dp.id];
-
-        if (idBiologicoReal && idParejaExternaReal) {
-           relacionesParaGuardar.push({
-            miembros: [idBiologicoReal, idParejaExternaReal],
-            tipo_relacion: dp.tipoRelacion || 'matrimonio',
-            fecha_inicio: dp.relAnioInicio ? new Date(dp.relAnioInicio, 0, 1) : null,
-            fecha_fin: dp.relAnioFin ? new Date(dp.relAnioFin, 0, 1) : null
-          });
-        }
-      }
-    }
-    
-    // Guardamos todas las relaciones de golpe
-    if (relacionesParaGuardar.length > 0) {
-      await Relacion.insertMany(relacionesParaGuardar, { session });
-    }
-
-    // Si todo salió bien, confirmamos cambios
     await session.commitTransaction();
-    session.endSession();
-
-    res.status(200).json({ 
-      msg: 'Genograma guardado correctamente', 
-      familiares: familiaresGuardados.length,
-      relaciones: relacionesParaGuardar.length 
-    });
+    res.json({ msg: 'Genograma actualizado correctamente', idReferencia: genogramaId });
 
   } catch (error) {
-    // Si algo falla, deshacemos todo
     await session.abortTransaction();
-    session.endSession();
-    console.error("Error al guardar genograma:", error);
+    console.error("Error al guardar:", error);
     res.status(500).json({ error: error.message });
+  } finally {
+    session.endSession();
   }
+});
+
+/* ==========================================
+   RUTA GET: OBTENER POR NOMBRE Y APELLIDO
+   ========================================== */
+router.get('/obtener-genograma', async (req, res) => {
+    try {
+        const { nombre, apellido } = req.query;
+
+        if (!nombre) return res.status(400).json({ msg: "Falta el nombre" });
+
+        // 1. Buscamos al PACIENTE principal por nombre/apellido
+        // Usamos una expresión regular para que no importen mayúsculas/minúsculas
+        const pacienteEncontrado = await Familiar.findOne({ 
+            rol: 'paciente',
+            nombre: { $regex: new RegExp(`^${nombre}$`, 'i') },
+            apellido: { $regex: new RegExp(`^${apellido || ''}$`, 'i') }
+        });
+
+        if (!pacienteEncontrado) {
+            return res.status(404).json({ msg: "Paciente no encontrado en DB" });
+        }
+
+        // 2. Si existe, buscamos a TODA su familia usando el genogramaId
+        const familiaCompleta = await Familiar.find({ 
+            genogramaId: pacienteEncontrado.genogramaId 
+        });
+
+        // 3. Devolvemos la lista plana para que el frontend la ordene
+        res.json(familiaCompleta);
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
 });
 
 module.exports = router;
